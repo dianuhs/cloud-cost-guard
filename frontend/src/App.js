@@ -494,12 +494,17 @@ ${finding.suggested_action}
                       <div className="flex items-center gap-2">
                         <CheckCircle className="h-4 w-4 text-brand-success" />
                         <CardTitle className="text-sm font-medium text-brand-ink">
-                          Reserved Instance opportunity for stable workloads
+                          Reserved Instance opportunity for m5.4xlarge workloads
                         </CardTitle>
                       </div>
-                      <Badge className="severity-medium px-2 py-1 text-xs font-medium rounded-md">
-                        MEDIUM
-                      </Badge>
+                      <div className="flex flex-col gap-1">
+                        <Badge className="severity-medium px-2 py-1 text-xs font-medium rounded-md">
+                          MEDIUM
+                        </Badge>
+                        <Badge className="text-green-600 bg-green-50 px-2 py-1 text-xs rounded-md">
+                          HIGH CONF
+                        </Badge>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -510,35 +515,69 @@ ${finding.suggested_action}
                           $127.50
                         </span>
                       </div>
+                      
+                      <div className="text-xs bg-brand-bg/30 p-2 rounded border border-brand-line">
+                        <div className="font-mono text-brand-muted">Resource: i-0x9y8z7a6b5c4dabc</div>
+                        <div className="text-brand-muted">Region: us-east-1</div>
+                        <div className="text-brand-muted">Type: m5.4xlarge</div>
+                      </div>
+                      
+                      <div className="flex justify-between text-xs">
+                        <span className="text-brand-muted">Risk: <span className="text-green-700">Low</span></span>
+                        <span className="text-brand-muted">Time: 4-6 hours</span>
+                      </div>
+                      
                       <p className="text-sm text-brand-ink">
-                        Consider 1-year Reserved Instances for consistent EC2 usage patterns
+                        Consider 1-year Reserved Instances for consistent 24/7 usage patterns
                       </p>
                       <div className="bg-brand-bg p-3 rounded-lg border border-brand-line">
                         <code className="text-xs font-mono text-brand-ink">
-                          aws ec2 describe-reserved-instances-offerings --instance-type m5.4xlarge
+                          aws ec2 describe-reserved-instances-offerings --instance-type m5.4xlarge --region us-east-1
                         </code>
                       </div>
+                      
+                      <div className="flex items-center justify-between text-xs text-brand-muted">
+                        <span>Analyzed: {new Date().toLocaleDateString()} {new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                      </div>
+                      
                       <Button 
                         variant="outline" 
                         size="sm" 
                         onClick={() => handleViewDetails({
-                          title: "Reserved Instance opportunity for stable workloads",
+                          title: "Reserved Instance opportunity for m5.4xlarge workloads",
+                          severity: "medium",
+                          confidence: "high",
+                          monthly_savings_usd_est: 127.50,
+                          risk_level: "Low",
+                          implementation_time: "4-6 hours",
+                          last_analyzed: new Date().toISOString(),
+                          methodology: "Analysis of 30-day usage patterns and AWS Reserved Instance pricing comparison",
                           evidence: {
+                            "resource_id": "i-0x9y8z7a6b5c4dabc",
+                            "instance_type": "m5.4xlarge",
+                            "region": "us-east-1",
                             "current_on_demand_cost": 248.30,
                             "reserved_instance_cost": 120.80, 
                             "monthly_savings": 127.50,
-                            "instance_types": ["m5.4xlarge", "m5.2xlarge"],
-                            "usage_pattern": "24/7 production workloads"
+                            "usage_pattern": "24/7 production workloads",
+                            "uptime_percentage": 99.2,
+                            "commitment_term": "1 year"
                           },
+                          assumptions: [
+                            "Current usage patterns will continue for 12+ months",
+                            "Production workload requires 24/7 availability",
+                            "No major architectural changes planned",
+                            "Budget available for upfront RI payment"
+                          ],
                           commands: [
-                            "aws ec2 describe-reserved-instances-offerings --instance-type m5.4xlarge",
-                            "aws ec2 purchase-reserved-instances-offering --reserved-instances-offering-id <offering-id>"
+                            "aws ec2 describe-reserved-instances-offerings --instance-type m5.4xlarge --region us-east-1",
+                            "aws ec2 purchase-reserved-instances-offering --reserved-instances-offering-id <offering-id> --instance-count 1"
                           ]
                         })}
                         className="w-full btn-brand-outline"
                       >
                         <Eye className="h-3 w-3 mr-1" />
-                        View Details
+                        View Details & Methodology
                       </Button>
                     </div>
                   </CardContent>
