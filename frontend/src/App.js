@@ -359,14 +359,63 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {findings.map((finding) => (
-                  <FindingCard
-                    key={finding.finding_id}
-                    finding={finding}
-                    onViewDetails={handleViewDetails}
-                  />
-                ))}
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {findings.map((finding) => (
+                    <FindingCard
+                      key={finding.finding_id}
+                      finding={finding}
+                      onViewDetails={handleViewDetails}
+                    />
+                  ))}
+                </div>
+                
+                {/* Action Items Card */}
+                <Card className="kpi-card">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-brand-ink">
+                      <CheckCircle className="h-5 w-5 text-brand-success" />
+                      Priority Action Items
+                    </CardTitle>
+                    <CardDescription className="text-brand-muted">
+                      Recommended next steps ranked by impact and ease of implementation
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {findings.slice(0, 3).map((finding, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-brand-bg/30 rounded-lg border border-brand-line">
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center justify-center w-6 h-6 bg-brand-accent text-white text-xs font-medium rounded-full">
+                              {index + 1}
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium text-brand-ink">
+                                {finding.title.length > 40 ? `${finding.title.substring(0, 40)}...` : finding.title}
+                              </div>
+                              <div className="text-xs text-brand-muted">
+                                {finding.suggested_action.length > 60 ? `${finding.suggested_action.substring(0, 60)}...` : finding.suggested_action}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-sm font-semibold text-brand-success">
+                              {formatCurrency(finding.monthly_savings_usd_est)}
+                            </div>
+                            <div className="text-xs text-brand-muted">monthly</div>
+                          </div>
+                        </div>
+                      ))}
+                      {findings.length > 3 && (
+                        <div className="text-center pt-2">
+                          <span className="text-sm text-brand-muted">
+                            +{findings.length - 3} more actions available
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             )}
           </TabsContent>
