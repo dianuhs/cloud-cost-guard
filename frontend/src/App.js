@@ -45,6 +45,11 @@ const formatCurrency = (amount) => {
   }).format(amount);
 };
 
+const formatPercent = (percent) => {
+  const sign = percent >= 0 ? '+' : '';
+  return `${sign}${percent.toFixed(1)}%`;
+};
+
 const formatTimestamp = (timestamp) => {
   const date = new Date(timestamp);
   return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
