@@ -324,26 +324,26 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <KPICard
             title="Total 30d Cost"
-            value={formatCurrency(kpis.total_30d_cost)}
-            change={kpis.wow_percent}
+            value={formatCurrency(updatedKpis.total_30d_cost)}
+            change={updatedKpis.wow_percent}
             icon={DollarSign}
             subtitle="vs last week"
           />
           <KPICard
             title="Savings Ready"
-            value={formatCurrency(kpis.savings_ready_usd)}
+            value={formatCurrency(updatedKpis.savings_ready_usd)}
             icon={Zap}
             subtitle="potential monthly savings"
           />
           <KPICard
             title="Under-utilized"
-            value={kpis.underutilized_count}
+            value={updatedKpis.underutilized_count}
             icon={Server}
             subtitle="compute resources"
           />
           <KPICard
             title="Orphaned Resources"
-            value={kpis.orphans_count}
+            value={updatedKpis.orphans_count}
             icon={HardDrive}
             subtitle="unattached volumes"
           />
