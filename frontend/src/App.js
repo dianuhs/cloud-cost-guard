@@ -364,7 +364,7 @@ const Dashboard = () => {
                 Cost Optimization Findings
               </h2>
               <Badge className="badge-brand text-brand-success border-brand-success/20">
-                {formatCurrency(kpis.savings_ready_usd)}/month potential
+                {formatCurrency(updatedKpis.savings_ready_usd)}/month potential
               </Badge>
             </div>
 
