@@ -99,7 +99,15 @@ const KPICard = ({ title, value, change, icon: Icon, subtitle, dataFreshness }) 
   <Card className="kpi-card hover:shadow-brand-md transition-all duration-200">
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
       <CardTitle className="text-sm font-medium text-brand-muted">{title}</CardTitle>
-      <Icon className="h-4 w-4 text-brand-light-muted" />
+      <div className="flex flex-col items-end">
+        <Icon className="h-4 w-4 text-brand-light-muted" />
+        {dataFreshness !== undefined && dataFreshness < 1 && (
+          <span className="text-xs text-green-600 mt-1">LIVE</span>
+        )}
+        {dataFreshness >= 1 && (
+          <span className="text-xs text-brand-light-muted mt-1">{dataFreshness}h</span>
+        )}
+      </div>
     </CardHeader>
     <CardContent>
       <div className="text-2xl font-bold text-brand-ink">{value}</div>
@@ -118,11 +126,6 @@ const KPICard = ({ title, value, change, icon: Icon, subtitle, dataFreshness }) 
       )}
       {subtitle && change === undefined && (
         <p className="text-xs text-brand-muted mt-1">{subtitle}</p>
-      )}
-      {dataFreshness && (
-        <p className="text-xs text-brand-light-muted mt-1">
-          Updated {dataFreshness}h ago
-        </p>
       )}
     </CardContent>
   </Card>
