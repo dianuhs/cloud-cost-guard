@@ -786,7 +786,7 @@ async def get_summary(window: str = Query("30d", description="Time window: 7d, 3
     
     # Data freshness simulation
     last_updated = datetime.now(timezone.utc) - timedelta(minutes=random.randint(5, 45))
-    data_freshness_hours = round((datetime.now(timezone.utc) - last_updated).total_seconds() / 3600, 1)
+    data_freshness_hours = int((datetime.now(timezone.utc) - last_updated).total_seconds() / 3600)
     
     kpis = KPIsSummary(
         total_30d_cost=round(total_30d_cost, 2),
