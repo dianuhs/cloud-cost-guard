@@ -344,18 +344,18 @@ const KeyInsightsCard = ({ insights }) => (
         <div>
           <div className="text-sm text-brand-muted">Budget Performance</div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm">MTD vs Budget</span>
-            <span className={`text-sm font-semibold ${insights.budget_variance >= 0 ? 'text-red-600' : 'text-green-600'}`}>
-              {insights.budget_variance >= 0 ? '+' : ''}{formatCurrency(insights.budget_variance || 0)}
-            </span>
+            <span className="text-sm">MTD: {formatCurrency(insights.mtd_actual || 0)}</span>
+            <span className="text-sm">Budget: {formatCurrency(insights.monthly_budget || 0)}</span>
           </div>
           <Progress 
             value={Math.min(((insights.mtd_actual || 0) / (insights.monthly_budget || 1)) * 100, 100)} 
-            className="h-2"
+            className="h-3"
           />
-          <div className="flex justify-between text-xs text-brand-muted mt-1">
-            <span>{formatCurrency(insights.mtd_actual || 0)} spent</span>
-            <span>{formatCurrency(insights.monthly_budget || 0)} budget</span>
+          <div className="flex justify-between text-xs mt-2">
+            <span className="text-brand-muted">Projected: {formatCurrency(insights.projected_month_end || 0)}</span>
+            <span className={`font-semibold ${insights.budget_variance >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+              {insights.budget_variance >= 0 ? '+' : ''}{formatCurrency(insights.budget_variance || 0)} vs budget
+            </span>
           </div>
         </div>
       </div>
