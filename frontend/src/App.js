@@ -680,7 +680,16 @@ ${finding.suggested_action}
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* KPI Cards */}
+        {/* Data Source Notice */}
+        <div className="mb-6">
+          <Alert className="bg-blue-50 border-blue-200">
+            <Activity className="h-4 w-4 text-blue-600" />
+            <AlertDescription className="text-blue-800">
+              <span className="font-medium">Data Source:</span> AWS Cost & Usage Reports • CloudWatch Metrics • Resource Inventory APIs
+              <span className="ml-4 text-blue-600">Last Updated: {formatTimestamp(updatedKpis.last_updated)}</span>
+            </AlertDescription>
+          </Alert>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <KPICard
             title="Total 30d Cost"
