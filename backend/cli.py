@@ -284,7 +284,7 @@ def resource(resource_id: str):
         print(f"Owner: {resource_doc.get('owner', 'Unknown')}")
         
         # Get recent costs
-        thirty_days_ago = date.today() - timedelta(days=30)
+        thirty_days_ago = datetime.combine(date.today() - timedelta(days=30), datetime.min.time()).replace(tzinfo=timezone.utc)
         costs = await guard.db.cost_daily.find({
             "resource_id": resource_id,
             "date": {"$gte": thirty_days_ago}
