@@ -368,49 +368,59 @@ const Dashboard = () => {
                   />
                 ))}
                 
-                {/* Action Items Card - positioned in the grid */}
-                <Card className="kpi-card">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-brand-ink">
-                      <CheckCircle className="h-5 w-5 text-brand-success" />
-                      Priority Action Items
-                    </CardTitle>
-                    <CardDescription className="text-brand-muted">
-                      Recommended next steps ranked by impact and ease of implementation
-                    </CardDescription>
+                {/* Reserved Instance Recommendation Card */}
+                <Card className="finding-card">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-brand-success" />
+                        <CardTitle className="text-sm font-medium text-brand-ink">
+                          Reserved Instance opportunity for stable workloads
+                        </CardTitle>
+                      </div>
+                      <Badge className="severity-medium px-2 py-1 text-xs font-medium rounded-md">
+                        MEDIUM
+                      </Badge>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {findings.slice(0, 3).map((finding, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-brand-bg/30 rounded-lg border border-brand-line">
-                          <div className="flex items-center gap-3">
-                            <div className="flex items-center justify-center w-6 h-6 bg-brand-accent text-white text-xs font-medium rounded-full">
-                              {index + 1}
-                            </div>
-                            <div>
-                              <div className="text-sm font-medium text-brand-ink">
-                                {finding.title.length > 40 ? `${finding.title.substring(0, 40)}...` : finding.title}
-                              </div>
-                              <div className="text-xs text-brand-muted">
-                                {finding.suggested_action.length > 60 ? `${finding.suggested_action.substring(0, 60)}...` : finding.suggested_action}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-sm font-semibold text-brand-success">
-                              {formatCurrency(finding.monthly_savings_usd_est)}
-                            </div>
-                            <div className="text-xs text-brand-muted">monthly</div>
-                          </div>
-                        </div>
-                      ))}
-                      {findings.length > 3 && (
-                        <div className="text-center pt-2">
-                          <span className="text-sm text-brand-muted">
-                            +{findings.length - 3} more actions available
-                          </span>
-                        </div>
-                      )}
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-brand-muted">Monthly Savings</span>
+                        <span className="text-lg font-semibold text-brand-success">
+                          $127.50
+                        </span>
+                      </div>
+                      <p className="text-sm text-brand-ink">
+                        Consider 1-year Reserved Instances for consistent EC2 usage patterns
+                      </p>
+                      <div className="bg-brand-bg p-3 rounded-lg border border-brand-line">
+                        <code className="text-xs font-mono text-brand-ink">
+                          aws ec2 describe-reserved-instances-offerings --instance-type m5.4xlarge
+                        </code>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleViewDetails({
+                          title: "Reserved Instance opportunity for stable workloads",
+                          evidence: {
+                            "current_on_demand_cost": 248.30,
+                            "reserved_instance_cost": 120.80, 
+                            "monthly_savings": 127.50,
+                            "instance_types": ["m5.4xlarge", "m5.2xlarge"],
+                            "usage_pattern": "24/7 production workloads"
+                          },
+                          commands: [
+                            "aws ec2 describe-reserved-instances-offerings --instance-type m5.4xlarge",
+                            "aws ec2 purchase-reserved-instances-offering --reserved-instances-offering-id <offering-id>"
+                          ]
+                        })}
+                        className="w-full btn-brand-outline"
+                      >
+                        <Eye className="h-3 w-3 mr-1" />
+                        View Details
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
