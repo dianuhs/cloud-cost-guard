@@ -249,8 +249,8 @@ def summary():
     
     asyncio.run(show_summary())
 
-@cli.command()
-def generate_mock_data():
+@cli.command("generate-mock-data")
+def generate_mock_data_cmd():
     """Generate mock data for testing"""
     
     async def generate_data():
