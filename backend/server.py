@@ -998,14 +998,21 @@ async def get_key_insights(window: str = Query("30d")):
         total_spend = sum(r["daily_total"] for r in daily_results)
         avg_daily = total_spend / len(daily_results) if daily_results else 0
         
-        # Simple projection (last 7 days average * days in month)
-        recent_days = daily_results[-7:] if len(daily_results) >= 7 else daily_results
-        recent_avg = sum(r["daily_total"] for r in recent_days) / len(recent_days)
+        # Get current day of month to calculate proper MTD vs projection
+        from datetime import date as date_module
+        today = date_module.today()
+        day_of_month = today.day
         days_in_month = 30  # Simplified
-        projected_month_end = recent_avg * days_in_month
         
-        # Monthly budget (mock)
-        monthly_budget = 50000.0  # $50k budget
+        # MTD actual is the total spend so far
+        mtd_actual = total_spend
+        
+        # Projection based on daily average * remaining days
+        daily_avg_recent = sum(r["daily_total"] for r in daily_results[-7:]) / 7 if len(daily_results) >= 7 else avg_daily
+        projected_month_end = mtd_actual + (daily_avg_recent * (days_in_month - day_of_month))
+        
+        # Monthly budget (realistic for this spend level)
+        monthly_budget = 180000.0  # $180k budget (more realistic for $160k actual)
         
         return {
             "highest_single_day": {
@@ -1014,7 +1021,7 @@ async def get_key_insights(window: str = Query("30d")):
             },
             "projected_month_end": round(projected_month_end, 2),
             "monthly_budget": monthly_budget,
-            "mtd_actual": round(total_spend, 2),
+            "mtd_actual": round(mtd_actual, 2),
             "budget_variance": round(projected_month_end - monthly_budget, 2),
             "budget_variance_percent": round(((projected_month_end - monthly_budget) / monthly_budget) * 100, 1),
             "avg_daily_spend": round(avg_daily, 2)
