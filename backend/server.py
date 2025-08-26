@@ -652,9 +652,10 @@ async def get_resource_detail(resource_id: str):
         raise HTTPException(status_code=404, detail="Resource not found")
     
     # Get cost data
+    thirty_days_ago = datetime.combine(date.today() - timedelta(days=30), datetime.min.time()).replace(tzinfo=timezone.utc)
     cost_data = await db.cost_daily.find({
         "resource_id": resource_id,
-        "date": {"$gte": date.today() - timedelta(days=30)}
+        "date": {"$gte": thirty_days_ago}
     }).sort("date", 1).to_list(None)
     
     # Get utilization data
