@@ -12,7 +12,7 @@ import os
 import json
 import csv
 from pathlib import Path
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from typing import List, Dict, Any
 import click
 from motor.motor_asyncio import AsyncIOMotorClient
