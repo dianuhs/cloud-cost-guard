@@ -313,9 +313,10 @@ class CostAnalyzer:
             # Under-utilized if median CPU < 15% AND p95 < 30%
             if median_p50 < 15.0 and median_p95 < 30.0:
                 # Estimate cost for this resource
+                thirty_days_ago = datetime.combine(date.today() - timedelta(days=30), datetime.min.time()).replace(tzinfo=timezone.utc)
                 cost_data = await db.cost_daily.find({
                     "resource_id": resource_id,
-                    "date": {"$gte": date.today() - timedelta(days=30)}
+                    "date": {"$gte": thirty_days_ago}
                 }).to_list(None)
                 
                 monthly_cost = sum(c["amount_usd"] for c in cost_data)
