@@ -854,47 +854,180 @@ async def get_products(window: str = Query("30d")):
     results = await db.cost_daily.aggregate(pipeline).to_list(None)
     return results
 
-@api_router.get("/resource/{resource_id}")
-async def get_resource_detail(resource_id: str):
-    """Get detailed resource information"""
+@api_router.get("/cost-trend")
+async def get_cost_trend(days: int = Query(30, description="Number of days for trend analysis")):
+    """Get daily cost trend data for charting"""
+    start_date = datetime.combine(date.today() - timedelta(days=days), datetime.min.time()).replace(tzinfo=timezone.utc)
     
-    # Get resource info
-    resource = await db.resources.find_one({"resource_id": resource_id})
-    if not resource:
-        raise HTTPException(status_code=404, detail="Resource not found")
+    pipeline = [
+        {"$match": {"date": {"$gte": start_date}}},
+        {"$group": {
+            "_id": "$date",
+            "total_cost": {"$sum": "$amount_usd"}
+        }},
+        {"$sort": {"_id": 1}}
+    ]
     
-    # Remove MongoDB ObjectId for JSON serialization
-    if '_id' in resource:
-        del resource['_id']
+    results = await db.cost_daily.aggregate(pipeline).to_list(None)
     
-    # Get cost data
-    thirty_days_ago = datetime.combine(date.today() - timedelta(days=30), datetime.min.time()).replace(tzinfo=timezone.utc)
-    cost_data = await db.cost_daily.find({
-        "resource_id": resource_id,
-        "date": {"$gte": thirty_days_ago}
-    }).sort("date", 1).to_list(None)
+    # Format for frontend charting
+    chart_data = []
+    for result in results:
+        chart_data.append({
+            "date": result["_id"].isoformat() if hasattr(result["_id"], 'isoformat') else str(result["_id"]),
+            "cost": round(result["total_cost"], 2),
+            "formatted_date": result["_id"].strftime("%m/%d") if hasattr(result["_id"], 'strftime') else str(result["_id"])
+        })
     
-    # Clean cost data
-    for cost in cost_data:
-        if '_id' in cost:
-            del cost['_id']
-        cost = parse_from_mongo(cost)
+    return chart_data
+
+@api_router.get("/service-breakdown")
+async def get_service_breakdown(window: str = Query("30d")):
+    """Get service cost breakdown for pie chart"""
+    days = {"7d": 7, "30d": 30, "90d": 90}.get(window, 30)
+    start_date = datetime.combine(date.today() - timedelta(days=days), datetime.min.time()).replace(tzinfo=timezone.utc)
     
-    # Get utilization data
-    util_data = await db.util_hourly.find({
-        "resource_id": resource_id,
-        "ts_hour": {"$gte": datetime.now(timezone.utc) - timedelta(days=7)}
-    }).sort("ts_hour", 1).to_list(None)
+    pipeline = [
+        {"$match": {"date": {"$gte": start_date}}},
+        {"$group": {
+            "_id": "$product",
+            "amount": {"$sum": "$amount_usd"}
+        }},
+        {"$sort": {"amount": -1}},
+        {"$limit": 8}  # Top 8 services for clean visualization
+    ]
     
-    # Clean utilization data
-    for util in util_data:
-        if '_id' in util:
-            del util['_id']
+    results = await db.cost_daily.aggregate(pipeline).to_list(None)
+    
+    # Calculate total for percentages
+    total = sum(r["amount"] for r in results)
+    
+    # Format for pie chart with colors
+    colors = [
+        "#8B6F47", "#6B7D5C", "#B5905C", "#A66B5C", 
+        "#6B8AA6", "#7A6B5D", "#9B8F7D", "#8F7A6B"
+    ]
+    
+    chart_data = []
+    for i, result in enumerate(results):
+        chart_data.append({
+            "name": result["_id"],
+            "value": round(result["amount"], 2),
+            "percentage": round((result["amount"] / total) * 100, 1),
+            "fill": colors[i % len(colors)]
+        })
     
     return {
-        "resource": resource,
-        "cost_history": cost_data,
-        "utilization_history": util_data
+        "data": chart_data,
+        "total": round(total, 2)
+    }
+
+@api_router.get("/top-movers")
+async def get_top_movers(days: int = Query(7, description="Days to compare for changes")):
+    """Get services with biggest cost changes"""
+    
+    # Get current period
+    current_start = datetime.combine(date.today() - timedelta(days=days), datetime.min.time()).replace(tzinfo=timezone.utc)
+    current_end = datetime.combine(date.today(), datetime.min.time()).replace(tzinfo=timezone.utc)
+    
+    # Get previous period  
+    previous_start = datetime.combine(date.today() - timedelta(days=days*2), datetime.min.time()).replace(tzinfo=timezone.utc)
+    previous_end = current_start
+    
+    # Current period costs
+    current_pipeline = [
+        {"$match": {"date": {"$gte": current_start, "$lt": current_end}}},
+        {"$group": {"_id": "$product", "current_cost": {"$sum": "$amount_usd"}}}
+    ]
+    
+    # Previous period costs
+    previous_pipeline = [
+        {"$match": {"date": {"$gte": previous_start, "$lt": previous_end}}},
+        {"$group": {"_id": "$product", "previous_cost": {"$sum": "$amount_usd"}}}
+    ]
+    
+    current_results = await db.cost_daily.aggregate(current_pipeline).to_list(None)
+    previous_results = await db.cost_daily.aggregate(previous_pipeline).to_list(None)
+    
+    # Combine and calculate changes
+    current_dict = {r["_id"]: r["current_cost"] for r in current_results}
+    previous_dict = {r["_id"]: r["previous_cost"] for r in previous_results}
+    
+    movers = []
+    for service in current_dict:
+        current_cost = current_dict[service]
+        previous_cost = previous_dict.get(service, 0)
+        
+        if previous_cost > 0:
+            change_amount = current_cost - previous_cost
+            change_percent = (change_amount / previous_cost) * 100
+            
+            movers.append({
+                "service": service,
+                "change_amount": round(change_amount, 2),
+                "change_percent": round(change_percent, 1),
+                "current_cost": round(current_cost, 2),
+                "previous_cost": round(previous_cost, 2)
+            })
+    
+    # Sort by absolute change amount and return top 10
+    movers.sort(key=lambda x: abs(x["change_amount"]), reverse=True)
+    return movers[:10]
+
+@api_router.get("/key-insights")
+async def get_key_insights(window: str = Query("30d")):
+    """Get key insights for dashboard highlight panel"""
+    days = {"7d": 7, "30d": 30, "90d": 90}.get(window, 30)
+    start_date = datetime.combine(date.today() - timedelta(days=days), datetime.min.time()).replace(tzinfo=timezone.utc)
+    
+    # Get daily totals
+    daily_pipeline = [
+        {"$match": {"date": {"$gte": start_date}}},
+        {"$group": {
+            "_id": "$date",
+            "daily_total": {"$sum": "$amount_usd"}
+        }},
+        {"$sort": {"daily_total": -1}}
+    ]
+    
+    daily_results = await db.cost_daily.aggregate(daily_pipeline).to_list(None)
+    
+    # Calculate insights
+    if daily_results:
+        highest_day = daily_results[0]
+        total_spend = sum(r["daily_total"] for r in daily_results)
+        avg_daily = total_spend / len(daily_results) if daily_results else 0
+        
+        # Simple projection (last 7 days average * days in month)
+        recent_days = daily_results[-7:] if len(daily_results) >= 7 else daily_results
+        recent_avg = sum(r["daily_total"] for r in recent_days) / len(recent_days)
+        days_in_month = 30  # Simplified
+        projected_month_end = recent_avg * days_in_month
+        
+        # Monthly budget (mock)
+        monthly_budget = 50000.0  # $50k budget
+        
+        return {
+            "highest_single_day": {
+                "date": highest_day["_id"].strftime("%b %d, %Y") if hasattr(highest_day["_id"], 'strftime') else str(highest_day["_id"]),
+                "amount": round(highest_day["daily_total"], 2)
+            },
+            "projected_month_end": round(projected_month_end, 2),
+            "monthly_budget": monthly_budget,
+            "mtd_actual": round(total_spend, 2),
+            "budget_variance": round(projected_month_end - monthly_budget, 2),
+            "budget_variance_percent": round(((projected_month_end - monthly_budget) / monthly_budget) * 100, 1),
+            "avg_daily_spend": round(avg_daily, 2)
+        }
+    
+    return {
+        "highest_single_day": {"date": "No data", "amount": 0},
+        "projected_month_end": 0,
+        "monthly_budget": 50000,
+        "mtd_actual": 0,
+        "budget_variance": 0,
+        "budget_variance_percent": 0,
+        "avg_daily_spend": 0
     }
 
 # Include the router in the main app
