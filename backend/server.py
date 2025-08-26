@@ -651,6 +651,10 @@ async def get_resource_detail(resource_id: str):
     if not resource:
         raise HTTPException(status_code=404, detail="Resource not found")
     
+    # Remove MongoDB ObjectId for JSON serialization
+    if '_id' in resource:
+        del resource['_id']
+    
     # Get cost data
     thirty_days_ago = datetime.combine(date.today() - timedelta(days=30), datetime.min.time()).replace(tzinfo=timezone.utc)
     cost_data = await db.cost_daily.find({
@@ -658,11 +662,22 @@ async def get_resource_detail(resource_id: str):
         "date": {"$gte": thirty_days_ago}
     }).sort("date", 1).to_list(None)
     
+    # Clean cost data
+    for cost in cost_data:
+        if '_id' in cost:
+            del cost['_id']
+        cost = parse_from_mongo(cost)
+    
     # Get utilization data
     util_data = await db.util_hourly.find({
         "resource_id": resource_id,
         "ts_hour": {"$gte": datetime.now(timezone.utc) - timedelta(days=7)}
     }).sort("ts_hour", 1).to_list(None)
+    
+    # Clean utilization data
+    for util in util_data:
+        if '_id' in util:
+            del util['_id']
     
     return {
         "resource": resource,
