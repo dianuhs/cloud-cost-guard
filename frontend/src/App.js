@@ -716,8 +716,8 @@ const Dashboard = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {[
-                    { type: 'Under-utilized', count: kpis.underutilized_count, color: 'bg-blue-500' },
-                    { type: 'Orphaned', count: kpis.orphans_count, color: 'bg-yellow-500' },
+                    { type: 'Under-utilized', count: updatedKpis.underutilized_count, color: 'bg-blue-500' },
+                    { type: 'Orphaned', count: updatedKpis.orphans_count, color: 'bg-yellow-500' },
                     { type: 'Idle', count: findings.filter(f => f.title.includes('Idle')).length, color: 'bg-red-500' }
                   ].map((item, index) => (
                     <div key={index} className="flex items-center justify-between">
