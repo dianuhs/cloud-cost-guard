@@ -699,6 +699,82 @@ const Dashboard = () => {
                 <ProductTable products={top_products} />
               </CardContent>
             </Card>
+
+            <Card className="kpi-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-brand-ink">
+                  <Zap className="h-5 w-5 text-brand-success" />
+                  Cost Optimization Opportunities
+                </CardTitle>
+                <CardDescription className="text-brand-muted">
+                  Potential savings by optimization category
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="table-brand rounded-lg">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-brand-muted font-semibold">Optimization Category</TableHead>
+                        <TableHead className="text-right text-brand-muted font-semibold">Monthly Savings</TableHead>
+                        <TableHead className="text-right text-brand-muted font-semibold">Impact</TableHead>
+                        <TableHead className="text-right text-brand-muted font-semibold">Implementation</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      <TableRow className="hover:bg-brand-bg/30">
+                        <TableCell className="font-medium text-brand-ink">Reserved Instances</TableCell>
+                        <TableCell className="text-right text-brand-success font-semibold">{formatCurrency(127.50)}</TableCell>
+                        <TableCell className="text-right">
+                          <Badge className="severity-high px-2 py-1 text-xs">HIGH</Badge>
+                        </TableCell>
+                        <TableCell className="text-right text-brand-ink">Medium effort</TableCell>
+                      </TableRow>
+                      <TableRow className="hover:bg-brand-bg/30">
+                        <TableCell className="font-medium text-brand-ink">Log Retention Policies</TableCell>
+                        <TableCell className="text-right text-brand-success font-semibold">{formatCurrency(62.80)}</TableCell>
+                        <TableCell className="text-right">
+                          <Badge className="severity-high px-2 py-1 text-xs">HIGH</Badge>
+                        </TableCell>
+                        <TableCell className="text-right text-brand-ink">Low effort</TableCell>
+                      </TableRow>
+                      <TableRow className="hover:bg-brand-bg/30">
+                        <TableCell className="font-medium text-brand-ink">Storage Optimization</TableCell>
+                        <TableCell className="text-right text-brand-success font-semibold">{formatCurrency(45.20)}</TableCell>
+                        <TableCell className="text-right">
+                          <Badge className="severity-medium px-2 py-1 text-xs">MEDIUM</Badge>
+                        </TableCell>
+                        <TableCell className="text-right text-brand-ink">Low effort</TableCell>
+                      </TableRow>
+                      <TableRow className="hover:bg-brand-bg/30">
+                        <TableCell className="font-medium text-brand-ink">Network Infrastructure</TableCell>
+                        <TableCell className="text-right text-brand-success font-semibold">{formatCurrency(45.00)}</TableCell>
+                        <TableCell className="text-right">
+                          <Badge className="severity-medium px-2 py-1 text-xs">MEDIUM</Badge>
+                        </TableCell>
+                        <TableCell className="text-right text-brand-ink">Medium effort</TableCell>
+                      </TableRow>
+                      <TableRow className="hover:bg-brand-bg/30">
+                        <TableCell className="font-medium text-brand-ink">Snapshot Management</TableCell>
+                        <TableCell className="text-right text-brand-success font-semibold">{formatCurrency(28.40)}</TableCell>
+                        <TableCell className="text-right">
+                          <Badge className="severity-medium px-2 py-1 text-xs">MEDIUM</Badge>
+                        </TableCell>
+                        <TableCell className="text-right text-brand-ink">Low effort</TableCell>
+                      </TableRow>
+                      <TableRow className="hover:bg-brand-bg/30">
+                        <TableCell className="font-medium text-brand-ink">Resource Cleanup</TableCell>
+                        <TableCell className="text-right text-brand-success font-semibold">{formatCurrency(48.65)}</TableCell>
+                        <TableCell className="text-right">
+                          <Badge className="severity-low px-2 py-1 text-xs">LOW</Badge>
+                        </TableCell>
+                        <TableCell className="text-right text-brand-ink">Low effort</TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Overview Tab */}
