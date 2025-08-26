@@ -623,7 +623,7 @@ async def get_findings(
 async def get_products(window: str = Query("30d")):
     """Get product cost breakdown"""
     days = {"7d": 7, "30d": 30, "90d": 90}.get(window, 30)
-    start_date = date.today() - timedelta(days=days)
+    start_date = datetime.combine(date.today() - timedelta(days=days), datetime.min.time()).replace(tzinfo=timezone.utc)
     
     pipeline = [
         {"$match": {"date": {"$gte": start_date}}},
