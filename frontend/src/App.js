@@ -621,7 +621,7 @@ const Dashboard = () => {
                         </span>
                       </div>
                       <p className="text-sm text-brand-ink">
-                        NAT Gateway handling <5GB/month traffic could use NAT Instance instead
+                        NAT Gateway handling &lt;5GB/month traffic could use NAT Instance instead
                       </p>
                       <div className="bg-brand-bg p-3 rounded-lg border border-brand-line">
                         <code className="text-xs font-mono text-brand-ink">
