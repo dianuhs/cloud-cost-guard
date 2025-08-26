@@ -45,9 +45,28 @@ const formatCurrency = (amount) => {
   }).format(amount);
 };
 
-const formatPercent = (percent) => {
-  const sign = percent >= 0 ? '+' : '';
-  return `${sign}${percent.toFixed(1)}%`;
+const formatTimestamp = (timestamp) => {
+  const date = new Date(timestamp);
+  return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+};
+
+const getConfidenceColor = (confidence) => {
+  const colors = {
+    'very_high': 'text-green-700 bg-green-50',
+    'high': 'text-green-600 bg-green-50',
+    'medium': 'text-yellow-600 bg-yellow-50',
+    'low': 'text-red-600 bg-red-50'
+  };
+  return colors[confidence] || colors.medium;
+};
+
+const getRiskColor = (risk) => {
+  const colors = {
+    'Low': 'text-green-700',
+    'Medium': 'text-yellow-600', 
+    'High': 'text-red-600'
+  };
+  return colors[risk] || colors.Medium;
 };
 
 const getSeverityColor = (severity) => {
