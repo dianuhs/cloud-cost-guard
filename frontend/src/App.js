@@ -424,6 +424,236 @@ const Dashboard = () => {
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* EBS gp2 to gp3 Migration Card */}
+                <Card className="finding-card">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-2">
+                        <HardDrive className="h-4 w-4 text-brand-warning" />
+                        <CardTitle className="text-sm font-medium text-brand-ink">
+                          EBS gp2 volumes can be upgraded to gp3
+                        </CardTitle>
+                      </div>
+                      <Badge className="severity-low px-2 py-1 text-xs font-medium rounded-md">
+                        LOW
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-brand-muted">Monthly Savings</span>
+                        <span className="text-lg font-semibold text-brand-success">
+                          $45.20
+                        </span>
+                      </div>
+                      <p className="text-sm text-brand-ink">
+                        Migrate 12 gp2 volumes to gp3 for 20% cost reduction with better performance
+                      </p>
+                      <div className="bg-brand-bg p-3 rounded-lg border border-brand-line">
+                        <code className="text-xs font-mono text-brand-ink">
+                          aws ec2 modify-volume --volume-id vol-12345 --volume-type gp3
+                        </code>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleViewDetails({
+                          title: "EBS gp2 volumes can be upgraded to gp3",
+                          evidence: {
+                            "gp2_volumes_count": 12,
+                            "current_monthly_cost": 226.00,
+                            "gp3_monthly_cost": 180.80,
+                            "monthly_savings": 45.20,
+                            "performance_improvement": "Up to 20% better baseline performance"
+                          },
+                          commands: [
+                            "aws ec2 describe-volumes --filters Name=volume-type,Values=gp2",
+                            "aws ec2 modify-volume --volume-id vol-12345 --volume-type gp3"
+                          ]
+                        })}
+                        className="w-full btn-brand-outline"
+                      >
+                        <Eye className="h-3 w-3 mr-1" />
+                        View Details
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Old Snapshot Cleanup Card */}
+                <Card className="finding-card">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-brand-warning" />
+                        <CardTitle className="text-sm font-medium text-brand-ink">
+                          Old EBS snapshots accumulating storage costs
+                        </CardTitle>
+                      </div>
+                      <Badge className="severity-medium px-2 py-1 text-xs font-medium rounded-md">
+                        MEDIUM
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-brand-muted">Monthly Savings</span>
+                        <span className="text-lg font-semibold text-brand-success">
+                          $28.40
+                        </span>
+                      </div>
+                      <p className="text-sm text-brand-ink">
+                        Delete 47 snapshots older than 90 days with no associated AMIs
+                      </p>
+                      <div className="bg-brand-bg p-3 rounded-lg border border-brand-line">
+                        <code className="text-xs font-mono text-brand-ink">
+                          aws ec2 describe-snapshots --owner-ids self --query 'Snapshots[?StartTime<=`2024-05-01`]'
+                        </code>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleViewDetails({
+                          title: "Old EBS snapshots accumulating storage costs",
+                          evidence: {
+                            "old_snapshots_count": 47,
+                            "total_snapshot_storage_gb": 1420,
+                            "monthly_cost_per_gb": 0.05,
+                            "monthly_savings": 28.40,
+                            "oldest_snapshot_age": "18 months"
+                          },
+                          commands: [
+                            "aws ec2 describe-snapshots --owner-ids self --query 'Snapshots[?StartTime<=`2024-05-01`]'",
+                            "aws ec2 delete-snapshot --snapshot-id snap-12345"
+                          ]
+                        })}
+                        className="w-full btn-brand-outline"
+                      >
+                        <Eye className="h-3 w-3 mr-1" />
+                        View Details
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* CloudWatch Log Retention Card */}
+                <Card className="finding-card">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-2">
+                        <BarChart3 className="h-4 w-4 text-brand-error" />
+                        <CardTitle className="text-sm font-medium text-brand-ink">
+                          CloudWatch logs with indefinite retention
+                        </CardTitle>
+                      </div>
+                      <Badge className="severity-high px-2 py-1 text-xs font-medium rounded-md">
+                        HIGH
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-brand-muted">Monthly Savings</span>
+                        <span className="text-lg font-semibold text-brand-success">
+                          $62.80
+                        </span>
+                      </div>
+                      <p className="text-sm text-brand-ink">
+                        Set 30-day retention on 8 log groups storing 2.1TB of logs indefinitely
+                      </p>
+                      <div className="bg-brand-bg p-3 rounded-lg border border-brand-line">
+                        <code className="text-xs font-mono text-brand-ink">
+                          aws logs put-retention-policy --log-group-name /aws/lambda/my-function --retention-in-days 30
+                        </code>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleViewDetails({
+                          title: "CloudWatch logs with indefinite retention",
+                          evidence: {
+                            "log_groups_count": 8,
+                            "total_log_storage_gb": 2100,
+                            "monthly_cost_per_gb": 0.50,
+                            "current_monthly_cost": 105.00,
+                            "cost_with_30d_retention": 42.20,
+                            "monthly_savings": 62.80
+                          },
+                          commands: [
+                            "aws logs describe-log-groups --query 'logGroups[?!retentionInDays]'",
+                            "aws logs put-retention-policy --log-group-name /aws/lambda/my-function --retention-in-days 30"
+                          ]
+                        })}
+                        className="w-full btn-brand-outline"
+                      >
+                        <Eye className="h-3 w-3 mr-1" />
+                        View Details
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Unused NAT Gateway Card */}
+                <Card className="finding-card">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-2">
+                        <Network className="h-4 w-4 text-brand-error" />
+                        <CardTitle className="text-sm font-medium text-brand-ink">
+                          NAT Gateway with minimal traffic in us-east-1
+                        </CardTitle>
+                      </div>
+                      <Badge className="severity-medium px-2 py-1 text-xs font-medium rounded-md">
+                        MEDIUM
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-brand-muted">Monthly Savings</span>
+                        <span className="text-lg font-semibold text-brand-success">
+                          $45.00
+                        </span>
+                      </div>
+                      <p className="text-sm text-brand-ink">
+                        NAT Gateway handling <5GB/month traffic could use NAT Instance instead
+                      </p>
+                      <div className="bg-brand-bg p-3 rounded-lg border border-brand-line">
+                        <code className="text-xs font-mono text-brand-ink">
+                          aws ec2 describe-nat-gateways --filter Name=state,Values=available
+                        </code>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleViewDetails({
+                          title: "NAT Gateway with minimal traffic",
+                          evidence: {
+                            "nat_gateway_id": "nat-12345abcdef",
+                            "monthly_base_cost": 45.00,
+                            "data_processing_gb": 4.2,
+                            "data_processing_cost": 0.19,
+                            "total_monthly_cost": 45.19,
+                            "nat_instance_alternative_cost": 8.50
+                          },
+                          commands: [
+                            "aws ec2 describe-nat-gateways --filter Name=state,Values=available",
+                            "aws cloudwatch get-metric-statistics --namespace AWS/NatGateway --metric-name BytesOutToDestination"
+                          ]
+                        })}
+                        className="w-full btn-brand-outline"
+                      >
+                        <Eye className="h-3 w-3 mr-1" />
+                        View Details
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             )}
           </TabsContent>
