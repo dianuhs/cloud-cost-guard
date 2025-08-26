@@ -2,6 +2,23 @@ import React, { useEffect, useState } from "react";
 import "./App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import axios from "axios";
+import { format, parseISO, subDays } from "date-fns";
+
+// Import Recharts components
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar
+} from "recharts";
 
 // Import UI components
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./components/ui/card";
@@ -12,6 +29,7 @@ import { Alert, AlertDescription } from "./components/ui/alert";
 import { Progress } from "./components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./components/ui/table";
 import { Separator } from "./components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./components/ui/select";
 
 // Import icons
 import { 
@@ -29,7 +47,12 @@ import {
   Cloud,
   Zap,
   CheckCircle,
-  XCircle
+  XCircle,
+  Calendar,
+  Target,
+  PieChart as PieChartIcon,
+  TrendingUpIcon,
+  Filter
 } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -94,7 +117,7 @@ const getSeverityIcon = (severity) => {
   }
 };
 
-// Dashboard Components
+// Enhanced Dashboard Components
 const KPICard = ({ title, value, change, icon: Icon, subtitle, dataFreshness }) => (
   <Card className="kpi-card hover:shadow-brand-md transition-all duration-200">
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -127,6 +150,215 @@ const KPICard = ({ title, value, change, icon: Icon, subtitle, dataFreshness }) 
       {subtitle && change === undefined && (
         <p className="text-xs text-brand-muted mt-1">{subtitle}</p>
       )}
+    </CardContent>
+  </Card>
+);
+
+const CostTrendChart = ({ data, height = 300 }) => (
+  <Card className="kpi-card">
+    <CardHeader>
+      <CardTitle className="flex items-center gap-2 text-brand-ink">
+        <BarChart3 className="h-5 w-5" />
+        Daily Spend Trend
+      </CardTitle>
+      <CardDescription className="text-brand-muted">
+        Cost trends over the last 30 days
+      </CardDescription>
+    </CardHeader>
+    <CardContent>
+      <div style={{ width: '100%', height }}>
+        <ResponsiveContainer>
+          <LineChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#E9E3DE" />
+            <XAxis 
+              dataKey="formatted_date" 
+              stroke="#7A6B5D"
+              fontSize={12}
+              tick={{ fill: '#7A6B5D' }}
+            />
+            <YAxis 
+              stroke="#7A6B5D"
+              fontSize={12}
+              tick={{ fill: '#7A6B5D' }}
+              tickFormatter={(value) => `$${(value/1000).toFixed(0)}k`}
+            />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: '#FFFFFF',
+                border: '1px solid #E9E3DE',
+                borderRadius: '8px',
+                color: '#0A0A0A'
+              }}
+              formatter={(value) => [formatCurrency(value), 'Daily Cost']}
+              labelFormatter={(label) => `Date: ${label}`}
+            />
+            <Line 
+              type="monotone" 
+              dataKey="cost" 
+              stroke="#8B6F47" 
+              strokeWidth={3}
+              dot={{ fill: '#8B6F47', r: 4 }}
+              activeDot={{ r: 6, fill: '#8B6F47' }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </CardContent>
+  </Card>
+);
+
+const ServiceBreakdownChart = ({ data, total }) => (
+  <Card className="kpi-card">
+    <CardHeader>
+      <CardTitle className="flex items-center gap-2 text-brand-ink">
+        <PieChartIcon className="h-5 w-5" />
+        Cost by Service
+      </CardTitle>
+      <CardDescription className="text-brand-muted">
+        Top services by cost breakdown
+      </CardDescription>
+    </CardHeader>
+    <CardContent>
+      <div className="flex items-center justify-between">
+        <div style={{ width: '60%', height: 300 }}>
+          <ResponsiveContainer>
+            <PieChart>
+              <Pie
+                data={data}
+                cx="50%"
+                cy="50%"
+                innerRadius={60}
+                outerRadius={120}
+                paddingAngle={2}
+                dataKey="value"
+              >
+                {data.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.fill} />
+                ))}
+              </Pie>
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #E9E3DE',
+                  borderRadius: '8px',
+                  color: '#0A0A0A'
+                }}
+                formatter={(value, name, props) => [
+                  formatCurrency(value),
+                  `${props.payload.name} (${props.payload.percentage}%)`
+                ]}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="w-2/5 space-y-2">
+          {data.slice(0, 6).map((service, index) => (
+            <div key={index} className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2">
+                <div 
+                  className="w-3 h-3 rounded-full" 
+                  style={{ backgroundColor: service.fill }}
+                ></div>
+                <span className="text-brand-ink">{service.name}</span>
+              </div>
+              <div className="text-right">
+                <div className="font-semibold text-brand-ink">{formatCurrency(service.value)}</div>
+                <div className="text-xs text-brand-muted">{service.percentage}%</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+);
+
+const TopMoversCard = ({ movers }) => (
+  <Card className="kpi-card">
+    <CardHeader>
+      <CardTitle className="flex items-center gap-2 text-brand-ink">
+        <TrendingUpIcon className="h-5 w-5" />
+        Top Movers (7d)
+      </CardTitle>
+      <CardDescription className="text-brand-muted">
+        Biggest cost changes in the last week
+      </CardDescription>
+    </CardHeader>
+    <CardContent>
+      <div className="space-y-3">
+        {movers.slice(0, 6).map((mover, index) => (
+          <div key={index} className="flex items-center justify-between p-2 rounded-lg bg-brand-bg/30">
+            <div className="flex items-center gap-3">
+              <div className={`w-2 h-8 rounded ${mover.change_amount >= 0 ? 'bg-red-500' : 'bg-green-500'}`}></div>
+              <div>
+                <div className="font-medium text-brand-ink text-sm">{mover.service}</div>
+                <div className="text-xs text-brand-muted">
+                  {formatCurrency(mover.previous_cost)} → {formatCurrency(mover.current_cost)}
+                </div>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className={`font-semibold text-sm ${mover.change_amount >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                {mover.change_amount >= 0 ? '+' : ''}{formatCurrency(mover.change_amount)}
+              </div>
+              <div className={`text-xs ${mover.change_amount >= 0 ? 'text-red-500' : 'text-green-500'}`}>
+                {mover.change_percent >= 0 ? '+' : ''}{mover.change_percent}%
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </CardContent>
+  </Card>
+);
+
+const KeyInsightsCard = ({ insights }) => (
+  <Card className="kpi-card">
+    <CardHeader>
+      <CardTitle className="flex items-center gap-2 text-brand-ink">
+        <Target className="h-5 w-5" />
+        Key Insights
+      </CardTitle>
+      <CardDescription className="text-brand-muted">
+        Important findings and projections
+      </CardDescription>
+    </CardHeader>
+    <CardContent>
+      <div className="space-y-4">
+        <div>
+          <div className="text-sm text-brand-muted">Highest Single Day</div>
+          <div className="font-semibold text-brand-ink">{insights.highest_single_day?.date}</div>
+          <div className="text-lg font-bold text-brand-accent">{formatCurrency(insights.highest_single_day?.amount || 0)}</div>
+        </div>
+        
+        <Separator />
+        
+        <div>
+          <div className="text-sm text-brand-muted">Projected Month-End</div>
+          <div className="text-lg font-bold text-brand-ink">{formatCurrency(insights.projected_month_end || 0)}</div>
+          <div className="text-xs text-brand-muted">Based on current trend</div>
+        </div>
+        
+        <Separator />
+        
+        <div>
+          <div className="text-sm text-brand-muted">Budget Performance</div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm">MTD vs Budget</span>
+            <span className={`text-sm font-semibold ${insights.budget_variance >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+              {insights.budget_variance >= 0 ? '+' : ''}{formatCurrency(insights.budget_variance || 0)}
+            </span>
+          </div>
+          <Progress 
+            value={Math.min(((insights.mtd_actual || 0) / (insights.monthly_budget || 1)) * 100, 100)} 
+            className="h-2"
+          />
+          <div className="flex justify-between text-xs text-brand-muted mt-1">
+            <span>{formatCurrency(insights.mtd_actual || 0)} spent</span>
+            <span>{formatCurrency(insights.monthly_budget || 0)} budget</span>
+          </div>
+        </div>
+      </div>
     </CardContent>
   </Card>
 );
@@ -241,25 +473,46 @@ const ProductTable = ({ products }) => (
 const Dashboard = () => {
   const [summary, setSummary] = useState(null);
   const [findings, setFindings] = useState([]);
+  const [costTrend, setCostTrend] = useState([]);
+  const [serviceBreakdown, setServiceBreakdown] = useState({ data: [], total: 0 });
+  const [topMovers, setTopMovers] = useState([]);
+  const [keyInsights, setKeyInsights] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [dateRange, setDateRange] = useState('30d');
 
   useEffect(() => {
-    loadData();
-  }, []);
+    loadAllData();
+  }, [dateRange]);
 
-  const loadData = async () => {
+  const loadAllData = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Load summary data
-      const summaryResponse = await axios.get(`${API}/summary?window=30d`);
-      setSummary(summaryResponse.data);
+      // Load all dashboard data in parallel
+      const [
+        summaryResponse,
+        findingsResponse,
+        costTrendResponse,
+        serviceBreakdownResponse,
+        topMoversResponse,
+        keyInsightsResponse
+      ] = await Promise.all([
+        axios.get(`${API}/summary?window=${dateRange}`),
+        axios.get(`${API}/findings?sort=savings&limit=50`),
+        axios.get(`${API}/cost-trend?days=${dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90}`),
+        axios.get(`${API}/service-breakdown?window=${dateRange}`),
+        axios.get(`${API}/top-movers?days=7`),
+        axios.get(`${API}/key-insights?window=${dateRange}`)
+      ]);
 
-      // Load detailed findings
-      const findingsResponse = await axios.get(`${API}/findings?sort=savings&limit=50`);
+      setSummary(summaryResponse.data);
       setFindings(findingsResponse.data);
+      setCostTrend(costTrendResponse.data);
+      setServiceBreakdown(serviceBreakdownResponse.data);
+      setTopMovers(topMoversResponse.data);
+      setKeyInsights(keyInsightsResponse.data);
 
     } catch (err) {
       console.error('Error loading data:', err);
@@ -270,7 +523,6 @@ const Dashboard = () => {
   };
 
   const handleViewDetails = (finding) => {
-    // Create comprehensive details modal content
     const evidence = JSON.stringify(finding.evidence, null, 2);
     const assumptions = finding.assumptions ? finding.assumptions.join('\n• ') : 'None specified';
     
@@ -317,7 +569,6 @@ ${finding.suggested_action}
       const response = await axios.get(`${API}/findings?sort=savings&limit=1000`);
       const findings = response.data;
       
-      // Create CSV content
       const headers = ['Title', 'Type', 'Severity', 'Monthly Savings', 'Resource ID', 'Action'];
       const rows = findings.map(f => [
         f.title,
@@ -332,7 +583,6 @@ ${finding.suggested_action}
         .map(row => row.map(field => `"${field}"`).join(','))
         .join('\n');
       
-      // Download file
       const blob = new Blob([csvContent], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -382,7 +632,6 @@ ${finding.suggested_action}
   const totalAdditionalSavings = Object.values(additionalSavings).reduce((sum, amount) => sum + amount, 0);
   const totalSavingsReady = kpis.savings_ready_usd + totalAdditionalSavings;
   
-  // Create updated KPIs with correct total savings
   const updatedKpis = {
     ...kpis,
     savings_ready_usd: totalSavingsReady
@@ -406,11 +655,22 @@ ${finding.suggested_action}
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Select value={dateRange} onValueChange={setDateRange}>
+                <SelectTrigger className="w-32">
+                  <Calendar className="h-4 w-4 mr-2" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7d">Last 7 days</SelectItem>
+                  <SelectItem value="30d">Last 30 days</SelectItem>
+                  <SelectItem value="90d">Last 90 days</SelectItem>
+                </SelectContent>
+              </Select>
               <Button variant="outline" onClick={exportCSV} className="btn-brand-outline">
                 <Download className="h-4 w-4 mr-2" />
                 Export CSV
               </Button>
-              <Button onClick={loadData} className="btn-brand-primary">
+              <Button onClick={loadAllData} className="btn-brand-primary">
                 <Activity className="h-4 w-4 mr-2" />
                 Refresh
               </Button>
@@ -453,6 +713,18 @@ ${finding.suggested_action}
           />
         </div>
 
+        {/* Charts Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <CostTrendChart data={costTrend} />
+          <ServiceBreakdownChart data={serviceBreakdown.data} total={serviceBreakdown.total} />
+        </div>
+
+        {/* Insights Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <TopMoversCard movers={topMovers} />
+          <KeyInsightsCard insights={keyInsights} />
+        </div>
+
         {/* Main Content Tabs */}
         <Tabs defaultValue="findings" className="space-y-6">
           <TabsList className="tabs-list grid w-full grid-cols-3">
@@ -490,7 +762,7 @@ ${finding.suggested_action}
                   />
                 ))}
                 
-                {/* Reserved Instance Recommendation Card */}
+                {/* Enhanced Reserved Instance Recommendation Card */}
                 <Card className="finding-card">
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
@@ -585,236 +857,6 @@ ${finding.suggested_action}
                     </div>
                   </CardContent>
                 </Card>
-
-                {/* EBS gp2 to gp3 Migration Card */}
-                <Card className="finding-card">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-2">
-                        <HardDrive className="h-4 w-4 text-brand-warning" />
-                        <CardTitle className="text-sm font-medium text-brand-ink">
-                          EBS gp2 volumes can be upgraded to gp3
-                        </CardTitle>
-                      </div>
-                      <Badge className="severity-low px-2 py-1 text-xs font-medium rounded-md">
-                        LOW
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-brand-muted">Monthly Savings</span>
-                        <span className="text-lg font-semibold text-brand-success">
-                          $45.20
-                        </span>
-                      </div>
-                      <p className="text-sm text-brand-ink">
-                        Migrate 12 gp2 volumes to gp3 for 20% cost reduction with better performance
-                      </p>
-                      <div className="bg-brand-bg p-3 rounded-lg border border-brand-line">
-                        <code className="text-xs font-mono text-brand-ink">
-                          aws ec2 modify-volume --volume-id vol-12345 --volume-type gp3
-                        </code>
-                      </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleViewDetails({
-                          title: "EBS gp2 volumes can be upgraded to gp3",
-                          evidence: {
-                            "gp2_volumes_count": 12,
-                            "current_monthly_cost": 226.00,
-                            "gp3_monthly_cost": 180.80,
-                            "monthly_savings": 45.20,
-                            "performance_improvement": "Up to 20% better baseline performance"
-                          },
-                          commands: [
-                            "aws ec2 describe-volumes --filters Name=volume-type,Values=gp2",
-                            "aws ec2 modify-volume --volume-id vol-12345 --volume-type gp3"
-                          ]
-                        })}
-                        className="w-full btn-brand-outline"
-                      >
-                        <Eye className="h-3 w-3 mr-1" />
-                        View Details
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Old Snapshot Cleanup Card */}
-                <Card className="finding-card">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-2">
-                        <AlertTriangle className="h-4 w-4 text-brand-warning" />
-                        <CardTitle className="text-sm font-medium text-brand-ink">
-                          Old EBS snapshots accumulating storage costs
-                        </CardTitle>
-                      </div>
-                      <Badge className="severity-medium px-2 py-1 text-xs font-medium rounded-md">
-                        MEDIUM
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-brand-muted">Monthly Savings</span>
-                        <span className="text-lg font-semibold text-brand-success">
-                          $28.40
-                        </span>
-                      </div>
-                      <p className="text-sm text-brand-ink">
-                        Delete 47 snapshots older than 90 days with no associated AMIs
-                      </p>
-                      <div className="bg-brand-bg p-3 rounded-lg border border-brand-line">
-                        <code className="text-xs font-mono text-brand-ink">
-                          aws ec2 describe-snapshots --owner-ids self --query 'Snapshots[?StartTime&lt;=`2024-05-01`]'
-                        </code>
-                      </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleViewDetails({
-                          title: "Old EBS snapshots accumulating storage costs",
-                          evidence: {
-                            "old_snapshots_count": 47,
-                            "total_snapshot_storage_gb": 1420,
-                            "monthly_cost_per_gb": 0.05,
-                            "monthly_savings": 28.40,
-                            "oldest_snapshot_age": "18 months"
-                          },
-                          commands: [
-                            "aws ec2 describe-snapshots --owner-ids self --query 'Snapshots[?StartTime<=`2024-05-01`]'",
-                            "aws ec2 delete-snapshot --snapshot-id snap-12345"
-                          ]
-                        })}
-                        className="w-full btn-brand-outline"
-                      >
-                        <Eye className="h-3 w-3 mr-1" />
-                        View Details
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* CloudWatch Log Retention Card */}
-                <Card className="finding-card">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-2">
-                        <BarChart3 className="h-4 w-4 text-brand-error" />
-                        <CardTitle className="text-sm font-medium text-brand-ink">
-                          CloudWatch logs with indefinite retention
-                        </CardTitle>
-                      </div>
-                      <Badge className="severity-high px-2 py-1 text-xs font-medium rounded-md">
-                        HIGH
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-brand-muted">Monthly Savings</span>
-                        <span className="text-lg font-semibold text-brand-success">
-                          $62.80
-                        </span>
-                      </div>
-                      <p className="text-sm text-brand-ink">
-                        Set 30-day retention on 8 log groups storing 2.1TB of logs indefinitely
-                      </p>
-                      <div className="bg-brand-bg p-3 rounded-lg border border-brand-line">
-                        <code className="text-xs font-mono text-brand-ink">
-                          aws logs put-retention-policy --log-group-name /aws/lambda/my-function --retention-in-days 30
-                        </code>
-                      </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleViewDetails({
-                          title: "CloudWatch logs with indefinite retention",
-                          evidence: {
-                            "log_groups_count": 8,
-                            "total_log_storage_gb": 2100,
-                            "monthly_cost_per_gb": 0.50,
-                            "current_monthly_cost": 105.00,
-                            "cost_with_30d_retention": 42.20,
-                            "monthly_savings": 62.80
-                          },
-                          commands: [
-                            "aws logs describe-log-groups --query 'logGroups[?!retentionInDays]'",
-                            "aws logs put-retention-policy --log-group-name /aws/lambda/my-function --retention-in-days 30"
-                          ]
-                        })}
-                        className="w-full btn-brand-outline"
-                      >
-                        <Eye className="h-3 w-3 mr-1" />
-                        View Details
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Unused NAT Gateway Card */}
-                <Card className="finding-card">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-2">
-                        <Network className="h-4 w-4 text-brand-error" />
-                        <CardTitle className="text-sm font-medium text-brand-ink">
-                          NAT Gateway with minimal traffic in us-east-1
-                        </CardTitle>
-                      </div>
-                      <Badge className="severity-medium px-2 py-1 text-xs font-medium rounded-md">
-                        MEDIUM
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-brand-muted">Monthly Savings</span>
-                        <span className="text-lg font-semibold text-brand-success">
-                          $45.00
-                        </span>
-                      </div>
-                      <p className="text-sm text-brand-ink">
-                        NAT Gateway handling &lt;5GB/month traffic could use NAT Instance instead
-                      </p>
-                      <div className="bg-brand-bg p-3 rounded-lg border border-brand-line">
-                        <code className="text-xs font-mono text-brand-ink">
-                          aws ec2 describe-nat-gateways --filter Name=state,Values=available
-                        </code>
-                      </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleViewDetails({
-                          title: "NAT Gateway with minimal traffic",
-                          evidence: {
-                            "nat_gateway_id": "nat-12345abcdef",
-                            "monthly_base_cost": 45.00,
-                            "data_processing_gb": 4.2,
-                            "data_processing_cost": 0.19,
-                            "total_monthly_cost": 45.19,
-                            "nat_instance_alternative_cost": 8.50
-                          },
-                          commands: [
-                            "aws ec2 describe-nat-gateways --filter Name=state,Values=available",
-                            "aws cloudwatch get-metric-statistics --namespace AWS/NatGateway --metric-name BytesOutToDestination"
-                          ]
-                        })}
-                        className="w-full btn-brand-outline"
-                      >
-                        <Eye className="h-3 w-3 mr-1" />
-                        View Details
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
               </div>
             )}
           </TabsContent>
@@ -825,7 +867,7 @@ ${finding.suggested_action}
               <h2 className="text-xl font-semibold text-brand-ink">
                 Product Cost Breakdown
               </h2>
-              <Badge className="badge-brand">Last 30 days</Badge>
+              <Badge className="badge-brand">Last {dateRange === '7d' ? '7' : dateRange === '30d' ? '30' : '90'} days</Badge>
             </div>
 
             <Card className="kpi-card">
@@ -907,7 +949,7 @@ ${finding.suggested_action}
                       </TableRow>
                       <TableRow className="hover:bg-brand-bg/30">
                         <TableCell className="font-medium text-brand-ink">Resource Cleanup</TableCell>
-                        <TableCell className="text-right text-brand-success font-semibold">{formatCurrency(48.65)}</TableCell>
+                        <TableCell className="text-right text-brand-success font-semibold">{formatCurrency(kpis.savings_ready_usd)}</TableCell>
                         <TableCell className="text-right">
                           <Badge className="severity-low px-2 py-1 text-xs">LOW</Badge>
                         </TableCell>
@@ -960,7 +1002,6 @@ ${finding.suggested_action}
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {/* Include static optimization findings */}
                     {[
                       {
                         title: "Reserved Instance opportunity for stable workloads", 
