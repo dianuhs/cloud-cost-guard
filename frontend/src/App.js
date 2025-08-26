@@ -267,9 +267,46 @@ const Dashboard = () => {
   };
 
   const handleViewDetails = (finding) => {
-    // For now, just show an alert - in production this would open a modal or navigate
+    // Create comprehensive details modal content
     const evidence = JSON.stringify(finding.evidence, null, 2);
-    alert(`Finding Details:\n\n${finding.title}\n\nEvidence:\n${evidence}\n\nCommands:\n${finding.commands.join('\n')}`);
+    const assumptions = finding.assumptions ? finding.assumptions.join('\n• ') : 'None specified';
+    
+    const details = `
+FINDING DETAILS
+==============
+
+Title: ${finding.title}
+Severity: ${finding.severity?.toUpperCase()} | Confidence: ${finding.confidence?.replace('_', ' ').toUpperCase()}
+Monthly Savings: ${formatCurrency(finding.monthly_savings_usd_est)}
+
+IMPLEMENTATION
+=============
+Risk Level: ${finding.risk_level}
+Estimated Time: ${finding.implementation_time}
+Last Analyzed: ${formatTimestamp(finding.last_analyzed)}
+
+METHODOLOGY
+===========
+${finding.methodology || 'Standard cost optimization analysis'}
+
+EVIDENCE
+========
+${evidence}
+
+ASSUMPTIONS
+===========
+• ${assumptions}
+
+RECOMMENDED COMMANDS
+===================
+${finding.commands ? finding.commands.join('\n') : 'No specific commands provided'}
+
+ACTION REQUIRED
+===============
+${finding.suggested_action}
+    `;
+    
+    alert(details);
   };
 
   const exportCSV = async () => {
