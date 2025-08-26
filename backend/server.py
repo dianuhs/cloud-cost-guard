@@ -201,7 +201,7 @@ async def generate_mock_data():
                     amount_usd=round(daily_cost, 2),
                     owner="team-alpha" if account.endswith("12") else "team-beta"
                 )
-                cost_data.append(cost_entry.dict())
+                cost_data.append(prepare_for_mongo(cost_entry.dict()))
     
     await db.cost_daily.insert_many(cost_data)
     
