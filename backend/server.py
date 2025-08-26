@@ -124,7 +124,35 @@ class SummaryResponse(BaseModel):
     top_products: List[ProductBreakdown]
     recent_findings: List[Finding]
 
-# Mock Data Generation
+# Helper functions for MongoDB serialization
+def prepare_for_mongo(data):
+    """Prepare data for MongoDB storage by converting dates"""
+    if isinstance(data, dict):
+        result = {}
+        for key, value in data.items():
+            if isinstance(value, date) and not isinstance(value, datetime):
+                # Convert date to datetime at start of day UTC
+                result[key] = datetime.combine(value, datetime.min.time()).replace(tzinfo=timezone.utc)
+            elif isinstance(value, dict):
+                result[key] = prepare_for_mongo(value)
+            elif isinstance(value, list):
+                result[key] = [prepare_for_mongo(item) if isinstance(item, dict) else item for item in value]
+            else:
+                result[key] = value
+        return result
+    return data
+
+def parse_from_mongo(item):
+    """Parse data from MongoDB by converting datetime back to date where needed"""
+    if isinstance(item, dict):
+        result = {}
+        for key, value in item.items():
+            if key == 'date' and isinstance(value, datetime):
+                result[key] = value.date()
+            else:
+                result[key] = value
+        return result
+    return item
 async def generate_mock_data():
     """Generate mock data for testing"""
     
