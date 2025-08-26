@@ -744,12 +744,12 @@ ${finding.suggested_action}
               </Badge>
             </div>
 
-            {findings.length === 0 ? (
+            {(findings.length === 0 && totalAdditionalSavings === 0) ? (
               <Card className="kpi-card">
                 <CardContent className="text-center py-12">
                   <CheckCircle className="h-12 w-12 text-brand-success mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-brand-ink mb-2">All Good!</h3>
-                  <p className="text-brand-muted">No cost optimization opportunities found.</p>
+                  <h3 className="text-lg font-medium text-brand-ink mb-2">All Optimized!</h3>
+                  <p className="text-brand-muted">No cost optimization opportunities found at this time.</p>
                 </CardContent>
               </Card>
             ) : (
