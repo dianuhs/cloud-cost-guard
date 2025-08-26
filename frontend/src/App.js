@@ -359,18 +359,16 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
             ) : (
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {findings.map((finding) => (
-                    <FindingCard
-                      key={finding.finding_id}
-                      finding={finding}
-                      onViewDetails={handleViewDetails}
-                    />
-                  ))}
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {findings.map((finding) => (
+                  <FindingCard
+                    key={finding.finding_id}
+                    finding={finding}
+                    onViewDetails={handleViewDetails}
+                  />
+                ))}
                 
-                {/* Action Items Card */}
+                {/* Action Items Card - positioned in the grid */}
                 <Card className="kpi-card">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-brand-ink">
