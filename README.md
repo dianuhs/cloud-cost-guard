@@ -38,4 +38,4 @@ Demo data for portfolio purposes. All numbers illustrative unless connected to y
 _Add 2–3 light‑mode screenshots with purple accent here._
 
 ## License
-MIT © 2025 Diana, Cloud & Capital
+MIT © 2025 Diana Molski, Cloud & Capital
