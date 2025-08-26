@@ -127,7 +127,7 @@ class KPIsSummary(BaseModel):
     underutilized_count: int
     orphans_count: int
     last_updated: datetime
-    data_freshness_hours: int
+    data_freshness_hours: int = Field(description="Hours since last data update")
 
 class ProductBreakdown(BaseModel):
     product: str
