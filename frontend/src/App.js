@@ -510,7 +510,7 @@ const Dashboard = () => {
                       </p>
                       <div className="bg-brand-bg p-3 rounded-lg border border-brand-line">
                         <code className="text-xs font-mono text-brand-ink">
-                          aws ec2 describe-snapshots --owner-ids self --query 'Snapshots[?StartTime<=`2024-05-01`]'
+                          aws ec2 describe-snapshots --owner-ids self --query 'Snapshots[?StartTime&lt;=`2024-05-01`]'
                         </code>
                       </div>
                       <Button 
