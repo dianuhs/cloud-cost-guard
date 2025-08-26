@@ -228,7 +228,7 @@ async def generate_mock_data():
             tags_json={"Environment": "production", "Team": "platform"},
             owner="team-alpha"
         )
-        resources_data.append(resource.dict())
+        resources_data.append(prepare_for_mongo(resource.dict()))
     
     await db.resources.insert_many(resources_data)
     
