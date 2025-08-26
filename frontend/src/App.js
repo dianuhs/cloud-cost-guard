@@ -425,24 +425,28 @@ ${finding.suggested_action}
             change={updatedKpis.wow_percent}
             icon={DollarSign}
             subtitle="vs last week"
+            dataFreshness={updatedKpis.data_freshness_hours}
           />
           <KPICard
             title="Savings Ready"
             value={formatCurrency(updatedKpis.savings_ready_usd)}
             icon={Zap}
             subtitle="potential monthly savings"
+            dataFreshness={updatedKpis.data_freshness_hours}
           />
           <KPICard
             title="Under-utilized"
             value={updatedKpis.underutilized_count}
             icon={Server}
             subtitle="compute resources"
+            dataFreshness={updatedKpis.data_freshness_hours}
           />
           <KPICard
             title="Orphaned Resources"
             value={updatedKpis.orphans_count}
             icon={HardDrive}
             subtitle="unattached volumes"
+            dataFreshness={updatedKpis.data_freshness_hours}
           />
         </div>
 
