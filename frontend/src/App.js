@@ -95,7 +95,7 @@ const getSeverityIcon = (severity) => {
 };
 
 // Dashboard Components
-const KPICard = ({ title, value, change, icon: Icon, subtitle }) => (
+const KPICard = ({ title, value, change, icon: Icon, subtitle, dataFreshness }) => (
   <Card className="kpi-card hover:shadow-brand-md transition-all duration-200">
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
       <CardTitle className="text-sm font-medium text-brand-muted">{title}</CardTitle>
@@ -118,6 +118,11 @@ const KPICard = ({ title, value, change, icon: Icon, subtitle }) => (
       )}
       {subtitle && change === undefined && (
         <p className="text-xs text-brand-muted mt-1">{subtitle}</p>
+      )}
+      {dataFreshness && (
+        <p className="text-xs text-brand-light-muted mt-1">
+          Updated {dataFreshness}h ago
+        </p>
       )}
     </CardContent>
   </Card>
