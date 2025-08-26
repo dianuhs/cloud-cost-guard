@@ -136,9 +136,16 @@ const FindingCard = ({ finding, onViewDetails }) => (
           {getSeverityIcon(finding.severity)}
           <CardTitle className="text-sm font-medium text-brand-ink">{finding.title}</CardTitle>
         </div>
-        <Badge className={`${getSeverityColor(finding.severity)} px-2 py-1 text-xs font-medium rounded-md`}>
-          {finding.severity.toUpperCase()}
-        </Badge>
+        <div className="flex flex-col gap-1">
+          <Badge className={getSeverityColor(finding.severity) + " px-2 py-1 text-xs font-medium rounded-md"}>
+            {finding.severity.toUpperCase()}
+          </Badge>
+          {finding.confidence && (
+            <Badge className={getConfidenceColor(finding.confidence) + " px-2 py-1 text-xs rounded-md"}>
+              {finding.confidence.replace('_', ' ').toUpperCase()} CONF
+            </Badge>
+          )}
+        </div>
       </div>
     </CardHeader>
     <CardContent>
@@ -149,7 +156,26 @@ const FindingCard = ({ finding, onViewDetails }) => (
             {formatCurrency(finding.monthly_savings_usd_est)}
           </span>
         </div>
+        
+        {finding.evidence && finding.evidence.resource_id && (
+          <div className="text-xs bg-brand-bg/30 p-2 rounded border border-brand-line">
+            <div className="font-mono text-brand-muted">Resource: {finding.evidence.resource_id}</div>
+            {finding.evidence.region && (
+              <div className="text-brand-muted">Region: {finding.evidence.region}</div>
+            )}
+            {finding.evidence.instance_type && (
+              <div className="text-brand-muted">Type: {finding.evidence.instance_type}</div>
+            )}
+          </div>
+        )}
+        
+        <div className="flex justify-between text-xs">
+          <span className="text-brand-muted">Risk: <span className={getRiskColor(finding.risk_level)}>{finding.risk_level}</span></span>
+          <span className="text-brand-muted">Time: {finding.implementation_time}</span>
+        </div>
+        
         <p className="text-sm text-brand-ink">{finding.suggested_action}</p>
+        
         {finding.commands && finding.commands.length > 0 && (
           <div className="bg-brand-bg p-3 rounded-lg border border-brand-line">
             <code className="text-xs font-mono text-brand-ink">
@@ -157,6 +183,11 @@ const FindingCard = ({ finding, onViewDetails }) => (
             </code>
           </div>
         )}
+        
+        <div className="flex items-center justify-between text-xs text-brand-muted">
+          <span>Analyzed: {formatTimestamp(finding.last_analyzed)}</span>
+        </div>
+        
         <Button 
           variant="outline" 
           size="sm" 
@@ -164,7 +195,7 @@ const FindingCard = ({ finding, onViewDetails }) => (
           className="w-full btn-brand-outline"
         >
           <Eye className="h-3 w-3 mr-1" />
-          View Details
+          View Details & Methodology
         </Button>
       </div>
     </CardContent>
