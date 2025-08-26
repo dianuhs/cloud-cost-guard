@@ -52,62 +52,62 @@ const formatPercent = (percent) => {
 
 const getSeverityColor = (severity) => {
   const colors = {
-    'critical': 'bg-red-100 text-red-800 border-red-200',
-    'high': 'bg-orange-100 text-orange-800 border-orange-200', 
-    'medium': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    'low': 'bg-green-100 text-green-800 border-green-200'
+    'critical': 'severity-critical',
+    'high': 'severity-high', 
+    'medium': 'severity-medium',
+    'low': 'severity-low'
   };
   return colors[severity] || colors.medium;
 };
 
 const getSeverityIcon = (severity) => {
   switch(severity) {
-    case 'critical': return <XCircle className="h-4 w-4 text-red-600" />;
-    case 'high': return <AlertTriangle className="h-4 w-4 text-orange-600" />;
-    case 'medium': return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
-    case 'low': return <CheckCircle className="h-4 w-4 text-green-600" />;
+    case 'critical': return <XCircle className="h-4 w-4 text-brand-error" />;
+    case 'high': return <AlertTriangle className="h-4 w-4" style={{ color: '#B5905C' }} />;
+    case 'medium': return <AlertTriangle className="h-4 w-4 text-brand-warning" />;
+    case 'low': return <CheckCircle className="h-4 w-4 text-brand-success" />;
     default: return <AlertTriangle className="h-4 w-4" />;
   }
 };
 
 // Dashboard Components
 const KPICard = ({ title, value, change, icon: Icon, subtitle }) => (
-  <Card className="hover:shadow-lg transition-all duration-200">
+  <Card className="kpi-card hover:shadow-brand-md transition-all duration-200">
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-      <CardTitle className="text-sm font-medium text-slate-600">{title}</CardTitle>
-      <Icon className="h-4 w-4 text-slate-400" />
+      <CardTitle className="text-sm font-medium text-brand-muted">{title}</CardTitle>
+      <Icon className="h-4 w-4 text-brand-light-muted" />
     </CardHeader>
     <CardContent>
-      <div className="text-2xl font-bold text-slate-900">{value}</div>
+      <div className="text-2xl font-bold text-brand-ink">{value}</div>
       {change !== undefined && (
-        <p className="text-xs text-slate-600 flex items-center gap-1 mt-1">
+        <p className="text-xs text-brand-muted flex items-center gap-1 mt-1">
           {change >= 0 ? (
-            <TrendingUp className="h-3 w-3 text-green-600" />
+            <TrendingUp className="h-3 w-3 text-brand-success" />
           ) : (
-            <TrendingDown className="h-3 w-3 text-red-600" />
+            <TrendingDown className="h-3 w-3 text-brand-error" />
           )}
-          <span className={change >= 0 ? 'text-green-600' : 'text-red-600'}>
+          <span className={change >= 0 ? 'text-brand-success' : 'text-brand-error'}>
             {formatPercent(change)}
           </span>
           {subtitle}
         </p>
       )}
       {subtitle && change === undefined && (
-        <p className="text-xs text-slate-600 mt-1">{subtitle}</p>
+        <p className="text-xs text-brand-muted mt-1">{subtitle}</p>
       )}
     </CardContent>
   </Card>
 );
 
 const FindingCard = ({ finding, onViewDetails }) => (
-  <Card className="hover:shadow-md transition-all duration-200">
+  <Card className="finding-card">
     <CardHeader className="pb-3">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-2">
           {getSeverityIcon(finding.severity)}
-          <CardTitle className="text-sm font-medium">{finding.title}</CardTitle>
+          <CardTitle className="text-sm font-medium text-brand-ink">{finding.title}</CardTitle>
         </div>
-        <Badge className={getSeverityColor(finding.severity)}>
+        <Badge className={`${getSeverityColor(finding.severity)} px-2 py-1 text-xs font-medium rounded-md`}>
           {finding.severity.toUpperCase()}
         </Badge>
       </div>
@@ -115,22 +115,24 @@ const FindingCard = ({ finding, onViewDetails }) => (
     <CardContent>
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-slate-600">Monthly Savings</span>
-          <span className="text-lg font-semibold text-green-700">
+          <span className="text-sm text-brand-muted">Monthly Savings</span>
+          <span className="text-lg font-semibold text-brand-success">
             {formatCurrency(finding.monthly_savings_usd_est)}
           </span>
         </div>
-        <p className="text-sm text-slate-700">{finding.suggested_action}</p>
+        <p className="text-sm text-brand-ink">{finding.suggested_action}</p>
         {finding.commands && finding.commands.length > 0 && (
-          <div className="bg-slate-50 p-2 rounded text-xs font-mono text-slate-700">
-            {finding.commands[0]}
+          <div className="bg-brand-bg p-3 rounded-lg border border-brand-line">
+            <code className="text-xs font-mono text-brand-ink">
+              {finding.commands[0]}
+            </code>
           </div>
         )}
         <Button 
           variant="outline" 
           size="sm" 
           onClick={() => onViewDetails(finding)}
-          className="w-full"
+          className="w-full btn-brand-outline"
         >
           <Eye className="h-3 w-3 mr-1" />
           View Details
@@ -141,33 +143,35 @@ const FindingCard = ({ finding, onViewDetails }) => (
 );
 
 const ProductTable = ({ products }) => (
-  <Table>
-    <TableHeader>
-      <TableRow>
-        <TableHead>Product</TableHead>
-        <TableHead className="text-right">30d Cost</TableHead>
-        <TableHead className="text-right">WoW Change</TableHead>
-        <TableHead className="text-right">% of Total</TableHead>
-      </TableRow>
-    </TableHeader>
-    <TableBody>
-      {products.map((product, index) => (
-        <TableRow key={index}>
-          <TableCell className="font-medium">{product.product}</TableCell>
-          <TableCell className="text-right">{formatCurrency(product.amount_usd)}</TableCell>
-          <TableCell className="text-right">
-            <div className={`flex items-center justify-end gap-1 ${
-              product.wow_delta >= 0 ? 'text-red-600' : 'text-green-600'
-            }`}>
-              {product.wow_delta >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-              {formatCurrency(Math.abs(product.wow_delta))}
-            </div>
-          </TableCell>
-          <TableCell className="text-right">{product.percent_of_total.toFixed(1)}%</TableCell>
+  <div className="table-brand rounded-lg">
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="text-brand-muted font-semibold">Product</TableHead>
+          <TableHead className="text-right text-brand-muted font-semibold">30d Cost</TableHead>
+          <TableHead className="text-right text-brand-muted font-semibold">WoW Change</TableHead>
+          <TableHead className="text-right text-brand-muted font-semibold">% of Total</TableHead>
         </TableRow>
-      ))}
-    </TableBody>
-  </Table>
+      </TableHeader>
+      <TableBody>
+        {products.map((product, index) => (
+          <TableRow key={index} className="hover:bg-brand-bg/30">
+            <TableCell className="font-medium text-brand-ink">{product.product}</TableCell>
+            <TableCell className="text-right text-brand-ink">{formatCurrency(product.amount_usd)}</TableCell>
+            <TableCell className="text-right">
+              <div className={`flex items-center justify-end gap-1 ${
+                product.wow_delta >= 0 ? 'text-brand-error' : 'text-brand-success'
+              }`}>
+                {product.wow_delta >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                {formatCurrency(Math.abs(product.wow_delta))}
+              </div>
+            </TableCell>
+            <TableCell className="text-right text-brand-ink">{product.percent_of_total.toFixed(1)}%</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  </div>
 );
 
 // Main Dashboard Component
@@ -244,10 +248,10 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-brand-bg to-brand-light flex items-center justify-center">
         <div className="text-center space-y-4">
-          <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="text-slate-600">Loading cost analysis...</p>
+          <div className="w-8 h-8 border-2 border-brand-accent border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-brand-muted">Loading cost analysis...</p>
         </div>
       </div>
     );
@@ -255,8 +259,8 @@ const Dashboard = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
-        <Alert className="max-w-md">
+      <div className="min-h-screen bg-gradient-to-br from-brand-bg to-brand-light flex items-center justify-center">
+        <Alert className="max-w-md alert-brand">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
@@ -267,26 +271,26 @@ const Dashboard = () => {
   const { kpis, top_products, recent_findings } = summary;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="min-h-screen bg-gradient-to-br from-brand-bg to-brand-light">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 shadow-sm">
+      <div className="nav-header">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-600 rounded-lg">
+              <div className="p-2 bg-brand-accent rounded-lg">
                 <Cloud className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-slate-900">Cloud Cost Guard</h1>
-                <p className="text-sm text-slate-600">Multi-cloud cost optimization</p>
+                <h1 className="text-2xl font-bold text-brand-ink">Cloud Cost Guard</h1>
+                <p className="text-sm text-brand-muted">Multi-cloud cost optimization</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={exportCSV}>
+              <Button variant="outline" onClick={exportCSV} className="btn-brand-outline">
                 <Download className="h-4 w-4 mr-2" />
                 Export CSV
               </Button>
-              <Button onClick={loadData}>
+              <Button onClick={loadData} className="btn-brand-primary">
                 <Activity className="h-4 w-4 mr-2" />
                 Refresh
               </Button>
@@ -327,29 +331,29 @@ const Dashboard = () => {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="findings" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="findings">Findings</TabsTrigger>
-            <TabsTrigger value="products">Products</TabsTrigger>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsList className="tabs-list grid w-full grid-cols-3">
+            <TabsTrigger value="findings" className="tab-trigger">Findings</TabsTrigger>
+            <TabsTrigger value="products" className="tab-trigger">Products</TabsTrigger>
+            <TabsTrigger value="overview" className="tab-trigger">Overview</TabsTrigger>
           </TabsList>
 
           {/* Findings Tab */}
           <TabsContent value="findings" className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-slate-900">
+              <h2 className="text-xl font-semibold text-brand-ink">
                 Cost Optimization Findings
               </h2>
-              <Badge variant="outline" className="text-green-700 border-green-300">
+              <Badge className="badge-brand text-brand-success border-brand-success/20">
                 {formatCurrency(kpis.savings_ready_usd)}/month potential
               </Badge>
             </div>
 
             {findings.length === 0 ? (
-              <Card>
+              <Card className="kpi-card">
                 <CardContent className="text-center py-12">
-                  <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-slate-900 mb-2">All Good!</h3>
-                  <p className="text-slate-600">No cost optimization opportunities found.</p>
+                  <CheckCircle className="h-12 w-12 text-brand-success mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-brand-ink mb-2">All Good!</h3>
+                  <p className="text-brand-muted">No cost optimization opportunities found.</p>
                 </CardContent>
               </Card>
             ) : (
@@ -368,19 +372,19 @@ const Dashboard = () => {
           {/* Products Tab */}
           <TabsContent value="products" className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-slate-900">
+              <h2 className="text-xl font-semibold text-brand-ink">
                 Product Cost Breakdown
               </h2>
-              <Badge variant="outline">Last 30 days</Badge>
+              <Badge className="badge-brand">Last 30 days</Badge>
             </div>
 
-            <Card>
+            <Card className="kpi-card">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-brand-ink">
                   <BarChart3 className="h-5 w-5" />
                   Top Products by Cost
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-brand-muted">
                   Your highest spending cloud products and their week-over-week changes
                 </CardDescription>
               </CardHeader>
@@ -392,53 +396,53 @@ const Dashboard = () => {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
-            <h2 className="text-xl font-semibold text-slate-900">Cost Overview</h2>
+            <h2 className="text-xl font-semibold text-brand-ink">Cost Overview</h2>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Savings Potential */}
-              <Card>
+              <Card className="kpi-card">
                 <CardHeader>
-                  <CardTitle>Savings Potential</CardTitle>
-                  <CardDescription>
+                  <CardTitle className="text-brand-ink">Savings Potential</CardTitle>
+                  <CardDescription className="text-brand-muted">
                     Breakdown of optimization opportunities by type
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {[
-                    { type: 'Under-utilized', count: kpis.underutilized_count, color: 'bg-blue-500' },
-                    { type: 'Orphaned', count: kpis.orphans_count, color: 'bg-yellow-500' },
-                    { type: 'Idle', count: findings.filter(f => f.title.includes('Idle')).length, color: 'bg-red-500' }
+                    { type: 'Under-utilized', count: kpis.underutilized_count, color: 'bg-brand-info' },
+                    { type: 'Orphaned', count: kpis.orphans_count, color: 'bg-brand-warning' },
+                    { type: 'Idle', count: findings.filter(f => f.title.includes('Idle')).length, color: 'bg-brand-error' }
                   ].map((item, index) => (
                     <div key={index} className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className={`w-3 h-3 rounded-full ${item.color}`}></div>
-                        <span className="text-sm text-slate-700">{item.type}</span>
+                        <span className="text-sm text-brand-ink">{item.type}</span>
                       </div>
-                      <span className="text-sm font-medium">{item.count}</span>
+                      <span className="text-sm font-medium text-brand-ink">{item.count}</span>
                     </div>
                   ))}
                 </CardContent>
               </Card>
 
               {/* Recent Activity */}
-              <Card>
+              <Card className="kpi-card">
                 <CardHeader>
-                  <CardTitle>Recent Findings</CardTitle>
-                  <CardDescription>
+                  <CardTitle className="text-brand-ink">Recent Findings</CardTitle>
+                  <CardDescription className="text-brand-muted">
                     Latest cost optimization opportunities
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
                     {recent_findings.slice(0, 5).map((finding, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                      <div key={index} className="flex items-center justify-between p-3 bg-brand-bg/50 rounded-lg border border-brand-line">
                         <div className="flex items-center gap-2">
                           {getSeverityIcon(finding.severity)}
-                          <span className="text-sm text-slate-700 truncate max-w-48">
+                          <span className="text-sm text-brand-ink truncate max-w-48">
                             {finding.title}
                           </span>
                         </div>
-                        <span className="text-sm font-medium text-green-700">
+                        <span className="text-sm font-medium text-brand-success">
                           {formatCurrency(finding.monthly_savings_usd_est)}
                         </span>
                       </div>
