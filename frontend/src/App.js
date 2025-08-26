@@ -458,13 +458,13 @@ const Dashboard = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {[
-                    { type: 'Under-utilized', count: kpis.underutilized_count, color: 'bg-brand-info' },
-                    { type: 'Orphaned', count: kpis.orphans_count, color: 'bg-brand-warning' },
-                    { type: 'Idle', count: findings.filter(f => f.title.includes('Idle')).length, color: 'bg-brand-error' }
+                    { type: 'Under-utilized', count: kpis.underutilized_count, color: 'bg-blue-500' },
+                    { type: 'Orphaned', count: kpis.orphans_count, color: 'bg-yellow-500' },
+                    { type: 'Idle', count: findings.filter(f => f.title.includes('Idle')).length, color: 'bg-red-500' }
                   ].map((item, index) => (
                     <div key={index} className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-2 h-2 rounded-full bg-brand-ink"></div>
+                        <div className={`w-3 h-3 rounded-full ${item.color}`}></div>
                         <span className="text-sm text-brand-ink">{item.type}</span>
                       </div>
                       <span className="text-sm font-medium text-brand-ink">{item.count}</span>
