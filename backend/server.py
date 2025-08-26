@@ -527,7 +527,7 @@ async def get_summary(window: str = Query("30d", description="Time window: 7d, 3
     
     # Parse window
     days = {"7d": 7, "30d": 30, "90d": 90}.get(window, 30)
-    start_date = date.today() - timedelta(days=days)
+    start_date = datetime.combine(date.today() - timedelta(days=days), datetime.min.time()).replace(tzinfo=timezone.utc)
     
     # Calculate total cost
     total_cost_pipeline = [
