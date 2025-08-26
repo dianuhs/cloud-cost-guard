@@ -417,7 +417,7 @@ const Dashboard = () => {
                   ].map((item, index) => (
                     <div key={index} className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className={`w-3 h-3 rounded-full ${item.color}`}></div>
+                        <div className="w-2 h-2 rounded-full bg-brand-ink"></div>
                         <span className="text-sm text-brand-ink">{item.type}</span>
                       </div>
                       <span className="text-sm font-medium text-brand-ink">{item.count}</span>
