@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 """
+Author: Diana (Cloud & Capital)
+License: MIT (see repository LICENSE)
+
 Cloud Cost Guard Backend API Testing Suite
 
 Tests all API endpoints, data generation, and analysis engine functionality.
 """
 
 import requests
+import os
 import sys
 import json
 import time
@@ -13,7 +17,7 @@ from datetime import datetime
 from typing import Dict, List, Any
 
 class CloudCostGuardAPITester:
-    def __init__(self, base_url="https://cloudcostguard.preview.emergentagent.com"):
+    def __init__(self, base_url=os.getenv("CLOUD_COST_GUARD_BASE_URL", "http://localhost:8000")):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
         self.tests_run = 0
