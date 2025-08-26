@@ -454,7 +454,7 @@ class CostAnalyzer:
         findings = []
         
         # Get last 30 days of cost data by product
-        thirty_days_ago = date.today() - timedelta(days=30)
+        thirty_days_ago = datetime.combine(date.today() - timedelta(days=30), datetime.min.time()).replace(tzinfo=timezone.utc)
         products = await db.cost_daily.distinct("product", {
             "date": {"$gte": thirty_days_ago}
         })
