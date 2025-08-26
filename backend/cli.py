@@ -155,7 +155,7 @@ class CostGuardCLI:
         await self.connect_db()
         
         # Get total 30d cost
-        thirty_days_ago = date.today() - timedelta(days=30)
+        thirty_days_ago = datetime.combine(date.today() - timedelta(days=30), datetime.min.time()).replace(tzinfo=timezone.utc)
         total_cost_pipeline = [
             {"$match": {"date": {"$gte": thirty_days_ago}}},
             {"$group": {"_id": None, "total": {"$sum": "$amount_usd"}}}
