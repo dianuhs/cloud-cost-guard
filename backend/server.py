@@ -238,40 +238,40 @@ async def generate_mock_data():
         ts = datetime.now(timezone.utc) - timedelta(hours=i)
         
         # Under-utilized instance
-        util_data.append(UtilHourly(
+        util_data.append(prepare_for_mongo(UtilHourly(
             resource_id="i-0123456789abcdef0",
             metric="cpu",
             ts_hour=ts,
             p50=8.5,  # Very low CPU usage
             p95=22.3
-        ).dict())
+        ).dict()))
         
         # Normal instance
-        util_data.append(UtilHourly(
+        util_data.append(prepare_for_mongo(UtilHourly(
             resource_id="i-0987654321fedcba0", 
             metric="cpu",
             ts_hour=ts,
             p50=65.2,
             p95=89.1
-        ).dict())
+        ).dict()))
         
         # GPU under-utilized
-        util_data.append(UtilHourly(
+        util_data.append(prepare_for_mongo(UtilHourly(
             resource_id="i-0555666777888999a",
             metric="gpu",
             ts_hour=ts,
             p50=5.1,  # Very low GPU usage
             p95=12.8
-        ).dict())
+        ).dict()))
         
         # Idle load balancer
-        util_data.append(UtilHourly(
+        util_data.append(prepare_for_mongo(UtilHourly(
             resource_id="elb-idle-load-balancer",
             metric="elb_req",
             ts_hour=ts,
             p50=0.1,  # Almost no requests
             p95=2.3
-        ).dict())
+        ).dict()))
     
     await db.util_hourly.insert_many(util_data)
 
