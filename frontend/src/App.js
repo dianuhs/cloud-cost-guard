@@ -364,7 +364,6 @@ const Dashboard = () => {
 
   useEffect(() => {
     loadAllData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateRange]);
 
   const loadAllData = () => {
