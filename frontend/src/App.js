@@ -1,10 +1,9 @@
-
 import React, { useEffect, useMemo, useState } from "react";
 import "./App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import axios from "axios";
 
-// Your PNG logo file (place it at: src/assets/cloud-and-capital-icon.png)
+// Logo (PNG). If your logo path differs, update the import below.
 import logo from "./assets/cloud-and-capital-icon.png";
 
 // Recharts
@@ -31,9 +30,10 @@ import {
   CheckCircle, XCircle
 } from "lucide-react";
 
-// API base (proxy first, then a safe fallback so data still loads)
-const API = process.env.REACT_APP_BACKEND_URL || "/api";
-const BACKUP_API = "https://cloudcostguard.preview.emergentagent.com/api";
+/* ----------------------------------------------------------
+   IMPORTANT: Force API to preview backend so data always loads
+-----------------------------------------------------------*/
+const API = "https://cloudcostguard.preview.emergentagent.com/api";
 
 /* ---------- Utils ---------- */
 const formatCurrency = (amount) =>
@@ -91,7 +91,6 @@ const getSeverityIcon = (severity) => {
   }
 };
 
-// Fallback skeleton
 const EMPTY_SUMMARY = {
   kpis: {
     total_30d_cost: 0,
@@ -400,14 +399,11 @@ const Dashboard = () => {
   const highCount = useMemo(() => normalizedFindings.filter(f => ["high", "very_high"].includes(f.confidence)).length, [normalizedFindings]);
   const lowCount  = useMemo(() => normalizedFindings.filter(f => ["low", "medium"].includes(f.confidence)).length, [normalizedFindings]);
 
-  // Helper: try proxy first, then fallback
   const getJSON = async (path) => {
-    try {
-      return (await axios.get(`${API}${path}`)).data;
-    } catch {
-      // fallback (keeps UI working if rewrite is broken)
-      return (await axios.get(`${BACKUP_API}${path}`)).data;
-    }
+    // Single, forced origin to avoid any rewrite/CORS issues
+    const url = `${API}${path}`;
+    const { data } = await axios.get(url);
+    return data;
   };
 
   useEffect(() => {
@@ -417,7 +413,6 @@ const Dashboard = () => {
 
     (async () => {
       try {
-        // Only need summary + findings. All charts derive from summary.
         const [sum, fnd] = await Promise.all([
           getJSON(`/summary?window=${dateRange}`),
           getJSON(`/findings?sort=savings&limit=200`)
@@ -427,10 +422,8 @@ const Dashboard = () => {
 
         const newSummary = sum?.kpis ? sum : EMPTY_SUMMARY;
         setSummary(newSummary);
-
         setFindings(Array.isArray(fnd) ? fnd : []);
 
-        // Build service breakdown from summary.top_products
         const products = Array.isArray(newSummary.top_products) ? newSummary.top_products : [];
         const total = products.reduce((acc, p) => acc + Number(p.amount_usd || p.amount || 0), 0);
         const palette = ["#8B6F47","#B5905C","#D8C3A5","#A8A7A7","#E98074","#C0B283","#F4E1D2","#E6B89C"];
@@ -442,7 +435,6 @@ const Dashboard = () => {
         }));
         setServiceBreakdown({ data: breakdown, total });
 
-        // Simple daily trend from the 30d total so the line always renders
         const days = dateRange === "7d" ? 7 : (dateRange === "30d" ? 30 : 90);
         const avg = total && days ? total / days : (newSummary.kpis.total_30d_cost || 0) / Math.max(days,1);
         const series = Array.from({ length: days }, (_, i) => {
@@ -463,9 +455,9 @@ const Dashboard = () => {
           budget_variance: total ? projected - total * 1.1 : 0,
         });
 
-        setTopMovers([]); // (optional) can fill when you have movers endpoint
+        setTopMovers([]);
       } catch (e) {
-        console.error(e);
+        console.error("Load error:", e?.message || e);
         if (alive) setError("Failed to load cost data from backend.");
       } finally {
         if (alive) setLoading(false);
@@ -535,8 +527,6 @@ ${finding.suggested_action}
       .catch(() => alert("Export failed. Please try again."));
   };
 
-  const toggleConviction = (level) => setConviction(prev => (prev === level ? "all" : level));
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-brand-bg to-brand-light flex items-center justify-center">
@@ -560,7 +550,6 @@ ${finding.suggested_action}
   }
 
   const { kpis, top_products } = summary;
-
   const trendLabel =
     dateRange === "30d" ? "Cost trends over the last 30 days" :
     dateRange === "7d"  ? "Cost trends over the last 7 days"  :
@@ -652,48 +641,25 @@ ${finding.suggested_action}
           <TabsContent value="findings" className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
               <h2 className="text-xl font-semibold text-brand-ink">Cost Optimization Findings</h2>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant={conviction === "high" ? "default" : "outline"}
-                  className={conviction === "high" ? "btn-brand-primary" : "btn-brand-outline"}
-                  onClick={() => setConviction(conviction === "high" ? "all" : "high")}
-                >
-                  High Conviction
-                  <Badge className="ml-2">{highCount}</Badge>
-                </Button>
-                <Button
-                  variant={conviction === "low" ? "default" : "outline"}
-                  className={conviction === "low" ? "btn-brand-primary" : "btn-brand-outline"}
-                  onClick={() => setConviction(conviction === "low" ? "all" : "low")}
-                >
-                  Low Conviction
-                  <Badge className="ml-2">{lowCount}</Badge>
-                </Button>
-              </div>
             </div>
 
             <div className="flex items-center justify-between">
               <Badge className="badge-brand text-brand-success border-brand-success/20">
                 {formatCurrency(kpis.savings_ready_usd)}/month potential
               </Badge>
-              {conviction !== "all" && (
-                <span className="text-xs text-brand-muted">
-                  Showing {filteredFindings.length} of {normalizedFindings.length} findings
-                </span>
-              )}
             </div>
 
-            {filteredFindings.length === 0 ? (
+            {findings.length === 0 ? (
               <Card className="kpi-card">
                 <CardContent className="text-center py-12">
                   <CheckCircle className="h-12 w-12 text-brand-success mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-brand-ink mb-2">All Optimized!</h3>
-                  <p className="text-brand-muted">No cost optimization opportunities found for this filter.</p>
+                  <p className="text-brand-muted">No cost optimization opportunities found at this time.</p>
                 </CardContent>
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredFindings.map((f) => <FindingCard key={f.finding_id || `${f.title}-${f.resource_id || ""}`} finding={f} onViewDetails={handleViewDetails} />)}
+                {findings.map((f) => <FindingCard key={f.finding_id || `${f.title}-${f.resource_id || ""}`} finding={f} onViewDetails={handleViewDetails} />)}
               </div>
             )}
           </TabsContent>
@@ -728,7 +694,7 @@ ${finding.suggested_action}
                   {[
                     { type: "Under-utilized", count: kpis.underutilized_count, color: "bg-blue-500" },
                     { type: "Orphaned", count: kpis.orphans_count, color: "bg-yellow-500" },
-                    { type: "Idle", count: normalizedFindings.filter(f => String(f.title).toLowerCase().includes("idle")).length, color: "bg-red-500" }
+                    { type: "Idle", count: findings.filter(f => String(f.title).toLowerCase().includes("idle")).length, color: "bg-red-500" }
                   ].map((it, i) => (
                     <div key={i} className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
