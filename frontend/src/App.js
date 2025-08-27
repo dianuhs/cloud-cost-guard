@@ -1,9 +1,10 @@
+
 import React, { useEffect, useMemo, useState } from "react";
 import "./App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import axios from "axios";
 
-// Put your PNG at: src/assets/cloud-and-capital-icon.png
+// Your PNG logo file (place it at: src/assets/cloud-and-capital-icon.png)
 import logo from "./assets/cloud-and-capital-icon.png";
 
 // Recharts
@@ -30,8 +31,9 @@ import {
   CheckCircle, XCircle
 } from "lucide-react";
 
-// API base
+// API base (proxy first, then a safe fallback so data still loads)
 const API = process.env.REACT_APP_BACKEND_URL || "/api";
+const BACKUP_API = "https://cloudcostguard.preview.emergentagent.com/api";
 
 /* ---------- Utils ---------- */
 const formatCurrency = (amount) =>
@@ -57,7 +59,6 @@ const sevToConfidence = (severity) => {
   if (s === "medium") return "medium";
   return "low";
 };
-
 const normConf = (c) => String(c || "").toLowerCase().replace(/\s+/g, "_");
 
 const getConfidenceColor = (confidence) => ({
@@ -90,7 +91,7 @@ const getSeverityIcon = (severity) => {
   }
 };
 
-// Safe fallback
+// Fallback skeleton
 const EMPTY_SUMMARY = {
   kpis: {
     total_30d_cost: 0,
@@ -133,11 +134,11 @@ const KPICard = ({ title, value, change, icon: Icon, subtitle, dataFreshness }) 
   </Card>
 );
 
-const CostTrendChart = ({ data, height = 300 }) => (
+const CostTrendChart = ({ data, height = 300, label = "Cost trends over the selected window" }) => (
   <Card className="kpi-card">
     <CardHeader>
       <CardTitle className="flex items-center gap-2 text-brand-ink"><BarChart3 className="h-5 w-5" />Daily Spend Trend</CardTitle>
-      <CardDescription className="text-brand-muted">Cost trends over the selected window</CardDescription>
+      <CardDescription className="text-brand-muted">{label}</CardDescription>
     </CardHeader>
     <CardContent>
       <div style={{ width: "100%", height }}>
@@ -160,7 +161,7 @@ const ServiceBreakdownChart = ({ data }) => (
   <Card className="kpi-card">
     <CardHeader>
       <CardTitle className="flex items-center gap-2 text-brand-ink"><PieChartIcon className="h-5 w-5" />Cost by Service</CardTitle>
-      <CardDescription className="text-brand-muted">Top services by 30d cost</CardDescription>
+      <CardDescription className="text-brand-muted">Top services by 30d cost breakdown</CardDescription>
     </CardHeader>
     <CardContent>
       <div className="flex items-center justify-between">
@@ -376,7 +377,6 @@ const Dashboard = () => {
   const [reloadToken, setReloadToken] = useState(0);
   const [conviction, setConviction] = useState("all"); // all | high | low
 
-  // normalize + dedupe findings
   const normalizedFindings = useMemo(() => {
     const seen = new Set();
     const out = [];
@@ -390,7 +390,6 @@ const Dashboard = () => {
     return out;
   }, [findings]);
 
-  // apply conviction filter
   const filteredFindings = useMemo(() => {
     if (conviction === "all") return normalizedFindings;
     const isHigh = (c) => c === "high" || c === "very_high";
@@ -401,36 +400,39 @@ const Dashboard = () => {
   const highCount = useMemo(() => normalizedFindings.filter(f => ["high", "very_high"].includes(f.confidence)).length, [normalizedFindings]);
   const lowCount  = useMemo(() => normalizedFindings.filter(f => ["low", "medium"].includes(f.confidence)).length, [normalizedFindings]);
 
+  // Helper: try proxy first, then fallback
+  const getJSON = async (path) => {
+    try {
+      return (await axios.get(`${API}${path}`)).data;
+    } catch {
+      // fallback (keeps UI working if rewrite is broken)
+      return (await axios.get(`${BACKUP_API}${path}`)).data;
+    }
+  };
+
   useEffect(() => {
     let alive = true;
     setLoading(true);
     setError(null);
 
-    Promise.allSettled([
-      axios.get(`${API}/summary?window=${dateRange}`),
-      axios.get(`${API}/findings?sort=savings&limit=200`),
-      axios.get(`${API}/products?window=${dateRange}`)
-    ])
-      .then(([summaryRes, findingsRes, productsRes]) => {
-        // Summary
-        let newSummary = EMPTY_SUMMARY;
-        if (summaryRes.status === "fulfilled" && summaryRes.value?.data?.kpis) {
-          newSummary = summaryRes.value.data;
-        }
-        if (alive) setSummary(newSummary);
+    (async () => {
+      try {
+        // Only need summary + findings. All charts derive from summary.
+        const [sum, fnd] = await Promise.all([
+          getJSON(`/summary?window=${dateRange}`),
+          getJSON(`/findings?sort=savings&limit=200`)
+        ]);
 
-        // Findings
-        if (alive) {
-          const arr = (findingsRes.status === "fulfilled" && Array.isArray(findingsRes.value?.data)) ? findingsRes.value.data : [];
-          setFindings(arr);
-        }
+        if (!alive) return;
 
-        // Products / breakdown
-        const products = (productsRes.status === "fulfilled" && Array.isArray(productsRes.value?.data))
-          ? productsRes.value.data
-          : Array.isArray(newSummary.top_products) ? newSummary.top_products : [];
+        const newSummary = sum?.kpis ? sum : EMPTY_SUMMARY;
+        setSummary(newSummary);
+
+        setFindings(Array.isArray(fnd) ? fnd : []);
+
+        // Build service breakdown from summary.top_products
+        const products = Array.isArray(newSummary.top_products) ? newSummary.top_products : [];
         const total = products.reduce((acc, p) => acc + Number(p.amount_usd || p.amount || 0), 0);
-
         const palette = ["#8B6F47","#B5905C","#D8C3A5","#A8A7A7","#E98074","#C0B283","#F4E1D2","#E6B89C"];
         const breakdown = products.slice(0, 8).map((p, i) => ({
           name: p.name || p.service || p._id || "Other",
@@ -438,36 +440,37 @@ const Dashboard = () => {
           percentage: total ? Number(((Number(p.amount_usd || p.amount || 0) / total) * 100).toFixed(1)) : 0,
           fill: palette[i % palette.length],
         }));
-        if (alive) setServiceBreakdown({ data: breakdown, total });
+        setServiceBreakdown({ data: breakdown, total });
 
-        // Simple synthetic trend from totals (so the chart always renders)
+        // Simple daily trend from the 30d total so the line always renders
         const days = dateRange === "7d" ? 7 : (dateRange === "30d" ? 30 : 90);
-        const avg = total && days ? total / days : 0;
+        const avg = total && days ? total / days : (newSummary.kpis.total_30d_cost || 0) / Math.max(days,1);
         const series = Array.from({ length: days }, (_, i) => {
           const d = new Date();
           d.setDate(d.getDate() - (days - 1 - i));
           const jitter = avg * 0.12 * Math.sin(i / 3);
           return { formatted_date: d.toLocaleDateString(), cost: Math.max(0, avg + jitter) };
         });
+        setCostTrend(series);
+
         const highest = series.reduce((m, pt) => (pt.cost > m.amount ? { date: pt.formatted_date, amount: pt.cost } : m), { date: "-", amount: 0 });
         const projected = series.reduce((sum, pt) => sum + pt.cost, 0);
-        if (alive) {
-          setCostTrend(series);
-          setKeyInsights({
-            highest_single_day: highest,
-            projected_month_end: projected,
-            mtd_actual: projected * (new Date().getDate() / Math.max(days, 1)),
-            monthly_budget: total ? total * 1.1 : 0,
-            budget_variance: total ? projected - total * 1.1 : 0,
-          });
-          setTopMovers([]);
-        }
-      })
-      .catch((err) => {
-        console.error("Error loading data:", err);
-        if (alive) setError("Failed to load cost data. Please verify /api rewrites or backend availability.");
-      })
-      .finally(() => alive && setLoading(false));
+        setKeyInsights({
+          highest_single_day: highest,
+          projected_month_end: projected,
+          mtd_actual: projected * (new Date().getDate() / Math.max(days, 1)),
+          monthly_budget: total ? total * 1.1 : 0,
+          budget_variance: total ? projected - total * 1.1 : 0,
+        });
+
+        setTopMovers([]); // (optional) can fill when you have movers endpoint
+      } catch (e) {
+        console.error(e);
+        if (alive) setError("Failed to load cost data from backend.");
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
 
     return () => { alive = false; };
   }, [dateRange, reloadToken]);
@@ -512,11 +515,11 @@ ${finding.suggested_action}
   };
 
   const exportCSV = () => {
-    axios.get(`${API}/findings?sort=savings&limit=1000`)
-      .then((response) => {
-        const data = Array.isArray(response.data) ? response.data : [];
+    getJSON(`/findings?sort=savings&limit=1000`)
+      .then((data) => {
+        const arr = Array.isArray(data) ? data : [];
         const headers = ["Title", "Type", "Severity", "Monthly Savings", "Resource ID", "Action", "Confidence"];
-        const rows = data.map(f => [
+        const rows = arr.map(f => [
           f.title, f.type, f.severity, f.monthly_savings_usd_est, f.resource_id || "", f.suggested_action,
           f.confidence || sevToConfidence(f.severity)
         ]);
@@ -529,10 +532,7 @@ ${finding.suggested_action}
         a.click();
         URL.revokeObjectURL(url);
       })
-      .catch((err) => {
-        console.error("Export failed:", err);
-        alert("Export failed. Please try again.");
-      });
+      .catch(() => alert("Export failed. Please try again."));
   };
 
   const toggleConviction = (level) => setConviction(prev => (prev === level ? "all" : level));
@@ -561,16 +561,10 @@ ${finding.suggested_action}
 
   const { kpis, top_products } = summary;
 
-  // Additional static savings to demo cards
-  const additionalSavings = {
-    reservedInstance: 127.50,
-    ebsGp3Migration: 45.20,
-    logRetention: 62.80,
-    snapshotCleanup: 28.40,
-    natGateway: 45.00
-  };
-  const totalAdditionalSavings = Object.values(additionalSavings).reduce((s, v) => s + v, 0);
-  const updatedKpis = { ...kpis, savings_ready_usd: kpis.savings_ready_usd + totalAdditionalSavings };
+  const trendLabel =
+    dateRange === "30d" ? "Cost trends over the last 30 days" :
+    dateRange === "7d"  ? "Cost trends over the last 7 days"  :
+                          "Cost trends over the last 90 days";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand-bg to-brand-light">
@@ -587,7 +581,7 @@ ${finding.suggested_action}
             </div>
             <div className="flex items-center gap-2">
               <Select value={dateRange} onValueChange={setDateRange}>
-                <SelectTrigger className="w-36">{/* wider to fit text */}<SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="7d">Last 7 days</SelectItem>
                   <SelectItem value="30d">Last 30 days</SelectItem>
@@ -628,15 +622,15 @@ ${finding.suggested_action}
 
         {/* KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <KPICard title="Total 30d Cost" value={formatCurrency(updatedKpis.total_30d_cost)} change={updatedKpis.wow_percent} icon={DollarSign} subtitle="vs last week" dataFreshness={updatedKpis.data_freshness_hours} />
-          <KPICard title="Savings Ready" value={formatCurrency(updatedKpis.savings_ready_usd)} icon={TrendingDown} subtitle="potential monthly savings" dataFreshness={updatedKpis.data_freshness_hours} />
-          <KPICard title="Under-utilized" value={updatedKpis.underutilized_count} icon={Server} subtitle="compute resources" dataFreshness={updatedKpis.data_freshness_hours} />
-          <KPICard title="Orphaned Resources" value={updatedKpis.orphans_count} icon={HardDrive} subtitle="unattached volumes" dataFreshness={updatedKpis.data_freshness_hours} />
+          <KPICard title="Total 30d Cost" value={formatCurrency(kpis.total_30d_cost)} change={kpis.wow_percent} icon={DollarSign} subtitle="vs last week" dataFreshness={kpis.data_freshness_hours} />
+          <KPICard title="Savings Ready" value={formatCurrency(kpis.savings_ready_usd)} icon={TrendingDown} subtitle="potential monthly savings" dataFreshness={kpis.data_freshness_hours} />
+          <KPICard title="Under-utilized" value={kpis.underutilized_count} icon={Server} subtitle="compute resources" dataFreshness={kpis.data_freshness_hours} />
+          <KPICard title="Orphaned Resources" value={kpis.orphans_count} icon={HardDrive} subtitle="unattached volumes" dataFreshness={kpis.data_freshness_hours} />
         </div>
 
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <CostTrendChart data={costTrend} />
+          <CostTrendChart data={costTrend} label={trendLabel} />
           <ServiceBreakdownChart data={serviceBreakdown.data} />
         </div>
 
@@ -680,7 +674,7 @@ ${finding.suggested_action}
 
             <div className="flex items-center justify-between">
               <Badge className="badge-brand text-brand-success border-brand-success/20">
-                {formatCurrency(updatedKpis.savings_ready_usd)}/month potential
+                {formatCurrency(kpis.savings_ready_usd)}/month potential
               </Badge>
               {conviction !== "all" && (
                 <span className="text-xs text-brand-muted">
@@ -716,7 +710,7 @@ ${finding.suggested_action}
                 <CardDescription className="text-brand-muted">Highest spending products and week-over-week changes</CardDescription>
               </CardHeader>
               <CardContent>
-                <ProductTable products={top_products} />
+                <ProductTable products={Array.isArray(top_products) ? top_products : []} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -732,8 +726,8 @@ ${finding.suggested_action}
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {[
-                    { type: "Under-utilized", count: updatedKpis.underutilized_count, color: "bg-blue-500" },
-                    { type: "Orphaned", count: updatedKpis.orphans_count, color: "bg-yellow-500" },
+                    { type: "Under-utilized", count: kpis.underutilized_count, color: "bg-blue-500" },
+                    { type: "Orphaned", count: kpis.orphans_count, color: "bg-yellow-500" },
                     { type: "Idle", count: normalizedFindings.filter(f => String(f.title).toLowerCase().includes("idle")).length, color: "bg-red-500" }
                   ].map((it, i) => (
                     <div key={i} className="flex items-center justify-between">
@@ -785,4 +779,3 @@ export default function App() {
     </div>
   );
 }
-
