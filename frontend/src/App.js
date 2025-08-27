@@ -73,15 +73,6 @@ const EMPTY_SUMMARY = {
   generated_at: new Date().toISOString()
 };
 
-// Use safe defaults so we never render null
-const [summary, setSummary] = useState(EMPTY_SUMMARY);
-const [findings, setFindings] = useState([]);
-const [costTrend, setCostTrend] = useState([]);
-const [serviceBreakdown, setServiceBreakdown] = useState([]);
-const [topMovers, setTopMovers] = useState([]);
-const [keyInsights, setKeyInsights] = useState([]);
-
-
 // Utility functions
 const formatCurrency = (amount) => {
   return new Intl.NumberFormat('en-US', {
@@ -521,8 +512,12 @@ const [summaryRes, findingsRes, productsRes] = await Promise.allSettled([
   axios.get(`${API}/products?window=${dateRange}`)
 ]);
 
-if (summaryRes.status === 'fulfilled') setSummary(summaryRes.value.data);
-else setSummary(null);
+if (summaryRes.status === 'fulfilled' && summaryRes.value?.data?.kpis) {
+  setSummary(summaryRes.value.data);
+} else {
+  setSummary(EMPTY_SUMMARY);
+}
+
 
 if (findingsRes.status === 'fulfilled') setFindings(findingsRes.value.data);
 else setFindings([]);
@@ -533,9 +528,10 @@ if (productsRes.status === 'fulfilled') {
 
 // Safe defaults for panels tied to endpoints we haven't implemented yet
 setCostTrend([]);
-setServiceBreakdown([]);
+setServiceBreakdown({ data: [], total: 0 });
 setTopMovers([]);
-setKeyInsights([]);
+setKeyInsights({});
+
 
 
     } catch (err) {
