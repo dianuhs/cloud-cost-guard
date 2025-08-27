@@ -5,6 +5,11 @@
 
   "engines": { "node": "20.x" },
 
+  "eslintConfig": {
+    "extends": ["react-app"],
+    "plugins": ["react-hooks"]
+  },
+
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",
     "@radix-ui/react-accordion": "^1.2.8",
