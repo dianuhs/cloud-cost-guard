@@ -490,29 +490,29 @@ const Dashboard = () => {
       setLoading(true);
       setError(null);
 
-      // Load all dashboard data in parallel
-      const [
-        summaryResponse,
-        findingsResponse,
-        costTrendResponse,
-        serviceBreakdownResponse,
-        topMoversResponse,
-        keyInsightsResponse
-      ] = await Promise.all([
-        axios.get(`${API}/summary?window=${dateRange}`),
-        axios.get(`${API}/findings?sort=savings&limit=50`),
-        axios.get(`${API}/cost-trend?days=${dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90}`),
-        axios.get(`${API}/service-breakdown?window=${dateRange}`),
-        axios.get(`${API}/top-movers?days=7`),
-        axios.get(`${API}/key-insights?window=${dateRange}`)
-      ]);
+      // Load essential dashboard data in parallel (endpoints implemented on the API)
+const [summaryRes, findingsRes, productsRes] = await Promise.allSettled([
+  axios.get(`${API}/summary?window=${dateRange}`),
+  axios.get(`${API}/findings?sort=savings&limit=50`),
+  axios.get(`${API}/products?window=${dateRange}`)
+]);
 
-      setSummary(summaryResponse.data);
-      setFindings(findingsResponse.data);
-      setCostTrend(costTrendResponse.data);
-      setServiceBreakdown(serviceBreakdownResponse.data);
-      setTopMovers(topMoversResponse.data);
-      setKeyInsights(keyInsightsResponse.data);
+if (summaryRes.status === 'fulfilled') setSummary(summaryRes.value.data);
+else setSummary(null);
+
+if (findingsRes.status === 'fulfilled') setFindings(findingsRes.value.data);
+else setFindings([]);
+
+if (productsRes.status === 'fulfilled') {
+  // products data available at productsRes.value.data if you want to show it
+}
+
+// Safe defaults for panels tied to endpoints we haven't implemented yet
+setCostTrend([]);
+setServiceBreakdown([]);
+setTopMovers([]);
+setKeyInsights([]);
+
 
     } catch (err) {
       console.error('Error loading data:', err);
