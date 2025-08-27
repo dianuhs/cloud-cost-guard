@@ -137,8 +137,11 @@ const CostTrendChart = ({ data, height = 300 }) => (
             <CartesianGrid strokeDasharray="3 3" stroke="#E9E3DE" />
             <XAxis dataKey="formatted_date" stroke="#7A6B5D" fontSize={12} tick={{ fill: "#7A6B5D" }} />
             <YAxis stroke="#7A6B5D" fontSize={12} tick={{ fill: "#7A6B5D" }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
-            <Tooltip contentStyle={{ backgroundColor: "#FFF", border: "1px solid #E9E3DE", borderRadius: 8, color: "#0A0A0A" }}
-              formatter={(value) => [formatCurrency(value), "Daily Cost"]} labelFormatter={(label) => `Date: ${label}`} />
+            <Tooltip
+  contentStyle={{ backgroundColor: "#FFF", border: "1px solid #E9E3DE", borderRadius: 8, color: "#0A0A0A" }}
+  formatter={(value) => [formatCurrency(value), "Daily Cost"]}
+  labelFormatter={(label) => `Date: ${label}`}
+/>
             <Line type="monotone" dataKey="cost" stroke="#8B6F47" strokeWidth={3} dot={{ fill: "#8B6F47", r: 4 }} activeDot={{ r: 6, fill: "#8B6F47" }} />
           </LineChart>
         </ResponsiveContainer>
