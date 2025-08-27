@@ -555,10 +555,7 @@ const Dashboard = () => {
       const d = new Date();
       d.setDate(d.getDate() - (days - 1 - i));
       const jitter = avg * 0.12 * Math.sin(i / 3); // subtle variation
-      return {
-        formatted_date: d.toLocaleDateString(),
-        cost: Math.max(0, avg + jitter)
-      };
+      return { formatted_date: d.toLocaleDateString(), cost: Math.max(0, avg + jitter) };
     });
     setCostTrend(series);
 
@@ -576,7 +573,7 @@ const Dashboard = () => {
       budget_variance: total ? projected - total * 1.1 : 0
     });
 
-    // optional: leave empty; the card will simply have no rows
+    // Leave empty; the card will just show no rows
     setTopMovers([]);
 
   } catch (err) {
@@ -586,6 +583,7 @@ const Dashboard = () => {
     setLoading(false);
   }
 };
+
 
 
       // Load essential dashboard data in parallel (endpoints implemented on the API)
