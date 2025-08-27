@@ -20,6 +20,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Separator } from "./components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./components/ui/select";
 
+import logo from "./assets/cloud-and-capital-icon.png"; //
+
 // Icons
 import {
   DollarSign, TrendingUp, TrendingDown, AlertTriangle, Server, HardDrive, Eye,
@@ -539,11 +541,16 @@ ${finding.suggested_action}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div>
-                <h1 className="text-2xl font-bold text-brand-ink">Cloud Cost Guard</h1>
-                <p className="text-sm text-brand-muted">Multi-cloud cost optimization</p>
-              </div>
-            </div>
+  <img
+    src={logo}
+    alt="Cloud & Capital"
+    className="h-8 w-8 rounded"
+  />
+  <div>
+    <h1 className="text-2xl font-bold text-brand-ink">Cloud Cost Guard</h1>
+    <p className="text-sm text-brand-muted">Multi-cloud cost optimization</p>
+  </div>
+</div>
             <div className="flex items-center gap-2">
               <Select value={dateRange} onValueChange={setDateRange}>
                 <SelectTrigger className="w-32">
