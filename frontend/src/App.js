@@ -57,6 +57,30 @@ import {
 
 const API = process.env.REACT_APP_BACKEND_URL || '/api';
 
+// Safe fallback summary so the UI never crashes if data is missing
+const EMPTY_SUMMARY = {
+  kpis: {
+    total_30d_cost: 0,
+    wow_percent: 0,
+    mom_percent: 0,
+    savings_ready_usd: 0,
+    underutilized_count: 0,
+    orphans_count: 0
+  },
+  top_products: [],
+  recent_findings: [],
+  window: "30d",
+  generated_at: new Date().toISOString()
+};
+
+// Use safe defaults so we never render null
+const [summary, setSummary] = useState(EMPTY_SUMMARY);
+const [findings, setFindings] = useState([]);
+const [costTrend, setCostTrend] = useState([]);
+const [serviceBreakdown, setServiceBreakdown] = useState([]);
+const [topMovers, setTopMovers] = useState([]);
+const [keyInsights, setKeyInsights] = useState([]);
+
 
 // Utility functions
 const formatCurrency = (amount) => {
