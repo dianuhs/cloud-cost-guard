@@ -644,11 +644,7 @@ ${finding.suggested_action}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <img 
-                src="https://customer-assets.emergentagent.com/job_cloudcostguard/artifacts/qsg3k5qw_Cloud%20%26%20Capital-6.png" 
-                alt="Cloud & Capital" 
-                className="h-10 w-10 object-contain"
-              />
+       
               <div>
                 <h1 className="text-2xl font-bold text-brand-ink">Cloud Cost Guard</h1>
                 <p className="text-sm text-brand-muted">Multi-cloud cost optimization</p>
