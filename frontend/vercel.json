@@ -1,0 +1,5 @@
+{
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://api.cloudandcapital.com/api/:path*" }
+  ]
+}
