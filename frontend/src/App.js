@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import "./App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import axios from "axios";
 
-// ⬇️ Add your icon asset here (change extension if needed)
+// Put your PNG at: src/assets/cloud-and-capital-icon.png
 import logo from "./assets/cloud-and-capital-icon.png";
 
 // Recharts
@@ -33,7 +33,7 @@ import {
 // API base
 const API = process.env.REACT_APP_BACKEND_URL || "/api";
 
-// ---------- Utils ----------
+/* ---------- Utils ---------- */
 const formatCurrency = (amount) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 })
     .format(Number(amount || 0));
@@ -50,6 +50,15 @@ const formatTimestamp = (timestamp) => {
   if (isNaN(d.getTime())) return "-";
   return d.toLocaleDateString() + " " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 };
+
+const sevToConfidence = (severity) => {
+  const s = String(severity || "").toLowerCase();
+  if (s === "critical" || s === "high") return "high";
+  if (s === "medium") return "medium";
+  return "low";
+};
+
+const normConf = (c) => String(c || "").toLowerCase().replace(/\s+/g, "_");
 
 const getConfidenceColor = (confidence) => ({
   very_high: "text-green-700 bg-green-50",
@@ -99,7 +108,7 @@ const EMPTY_SUMMARY = {
   generated_at: new Date().toISOString(),
 };
 
-// ---------- UI parts ----------
+/* ---------- UI parts ---------- */
 const KPICard = ({ title, value, change, icon: Icon, subtitle, dataFreshness }) => (
   <Card className="kpi-card hover:shadow-brand-md transition-all duration-200">
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -137,11 +146,8 @@ const CostTrendChart = ({ data, height = 300 }) => (
             <CartesianGrid strokeDasharray="3 3" stroke="#E9E3DE" />
             <XAxis dataKey="formatted_date" stroke="#7A6B5D" fontSize={12} tick={{ fill: "#7A6B5D" }} />
             <YAxis stroke="#7A6B5D" fontSize={12} tick={{ fill: "#7A6B5D" }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
-            <Tooltip
-  contentStyle={{ backgroundColor: "#FFF", border: "1px solid #E9E3DE", borderRadius: 8, color: "#0A0A0A" }}
-  formatter={(value) => [formatCurrency(value), "Daily Cost"]}
-  labelFormatter={(label) => `Date: ${label}`}
-/>
+            <Tooltip contentStyle={{ backgroundColor: "#FFF", border: "1px solid #E9E3DE", borderRadius: 8, color: "#0A0A0A" }}
+              formatter={(value) => [formatCurrency(value), "Daily Cost"]} labelFormatter={(label) => `Date: ${label}`} />
             <Line type="monotone" dataKey="cost" stroke="#8B6F47" strokeWidth={3} dot={{ fill: "#8B6F47", r: 4 }} activeDot={{ r: 6, fill: "#8B6F47" }} />
           </LineChart>
         </ResponsiveContainer>
@@ -272,7 +278,7 @@ const FindingCard = ({ finding, onViewDetails }) => (
             {String(finding.severity || "").toUpperCase()}
           </Badge>
           {finding.confidence && (
-            <Badge className={getConfidenceColor(finding.confidence) + " px-2 py-1 text-xs rounded-md"}>
+            <Badge className={getConfidenceColor(normConf(finding.confidence)) + " px-2 py-1 text-xs rounded-md"}>
               {String(finding.confidence).replace("_", " ").toUpperCase()} CONF
             </Badge>
           )}
@@ -356,7 +362,7 @@ const ProductTable = ({ products }) => (
   </div>
 );
 
-// ---------- Main ----------
+/* ---------- Main ---------- */
 const Dashboard = () => {
   const [summary, setSummary] = useState(EMPTY_SUMMARY);
   const [findings, setFindings] = useState([]);
@@ -367,41 +373,64 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dateRange, setDateRange] = useState("30d");
+  const [reloadToken, setReloadToken] = useState(0);
+  const [conviction, setConviction] = useState("all"); // all | high | low
+
+  // normalize + dedupe findings
+  const normalizedFindings = useMemo(() => {
+    const seen = new Set();
+    const out = [];
+    for (const f of findings) {
+      const id = f.finding_id || `${f.title}::${f.resource_id || ""}`;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      const conf = f.confidence ? normConf(f.confidence) : sevToConfidence(f.severity);
+      out.push({ ...f, confidence: conf });
+    }
+    return out;
+  }, [findings]);
+
+  // apply conviction filter
+  const filteredFindings = useMemo(() => {
+    if (conviction === "all") return normalizedFindings;
+    const isHigh = (c) => c === "high" || c === "very_high";
+    const isLow = (c) => c === "low" || c === "medium";
+    return normalizedFindings.filter(f => (conviction === "high" ? isHigh(f.confidence) : isLow(f.confidence)));
+  }, [normalizedFindings, conviction]);
+
+  const highCount = useMemo(() => normalizedFindings.filter(f => ["high", "very_high"].includes(f.confidence)).length, [normalizedFindings]);
+  const lowCount  = useMemo(() => normalizedFindings.filter(f => ["low", "medium"].includes(f.confidence)).length, [normalizedFindings]);
 
   useEffect(() => {
-    loadAllData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateRange]);
-
-  const loadAllData = () => {
+    let alive = true;
     setLoading(true);
     setError(null);
 
     Promise.allSettled([
       axios.get(`${API}/summary?window=${dateRange}`),
-      axios.get(`${API}/findings?sort=savings&limit=50`),
+      axios.get(`${API}/findings?sort=savings&limit=200`),
       axios.get(`${API}/products?window=${dateRange}`)
     ])
-      .then(([summaryRes, findingsRes /*, productsRes */]) => {
+      .then(([summaryRes, findingsRes, productsRes]) => {
         // Summary
         let newSummary = EMPTY_SUMMARY;
         if (summaryRes.status === "fulfilled" && summaryRes.value?.data?.kpis) {
           newSummary = summaryRes.value.data;
         }
-        setSummary(newSummary);
+        if (alive) setSummary(newSummary);
 
         // Findings
-        if (findingsRes.status === "fulfilled" && Array.isArray(findingsRes.value?.data)) {
-          setFindings(findingsRes.value.data);
-        } else {
-          setFindings([]);
+        if (alive) {
+          const arr = (findingsRes.status === "fulfilled" && Array.isArray(findingsRes.value?.data)) ? findingsRes.value.data : [];
+          setFindings(arr);
         }
 
-        // Derive charts from summary.top_products
-        const products = Array.isArray(newSummary.top_products) ? newSummary.top_products : [];
+        // Products / breakdown
+        const products = (productsRes.status === "fulfilled" && Array.isArray(productsRes.value?.data))
+          ? productsRes.value.data
+          : Array.isArray(newSummary.top_products) ? newSummary.top_products : [];
         const total = products.reduce((acc, p) => acc + Number(p.amount_usd || p.amount || 0), 0);
 
-        // Pie breakdown (top services)
         const palette = ["#8B6F47","#B5905C","#D8C3A5","#A8A7A7","#E98074","#C0B283","#F4E1D2","#E6B89C"];
         const breakdown = products.slice(0, 8).map((p, i) => ({
           name: p.name || p.service || p._id || "Other",
@@ -409,9 +438,9 @@ const Dashboard = () => {
           percentage: total ? Number(((Number(p.amount_usd || p.amount || 0) / total) * 100).toFixed(1)) : 0,
           fill: palette[i % palette.length],
         }));
-        setServiceBreakdown({ data: breakdown, total });
+        if (alive) setServiceBreakdown({ data: breakdown, total });
 
-        // Line trend (synthetic) 7/30/90
+        // Simple synthetic trend from totals (so the chart always renders)
         const days = dateRange === "7d" ? 7 : (dateRange === "30d" ? 30 : 90);
         const avg = total && days ? total / days : 0;
         const series = Array.from({ length: days }, (_, i) => {
@@ -420,29 +449,28 @@ const Dashboard = () => {
           const jitter = avg * 0.12 * Math.sin(i / 3);
           return { formatted_date: d.toLocaleDateString(), cost: Math.max(0, avg + jitter) };
         });
-        setCostTrend(series);
-
-        // Key insights
         const highest = series.reduce((m, pt) => (pt.cost > m.amount ? { date: pt.formatted_date, amount: pt.cost } : m), { date: "-", amount: 0 });
         const projected = series.reduce((sum, pt) => sum + pt.cost, 0);
-        setKeyInsights({
-          highest_single_day: highest,
-          projected_month_end: projected,
-          mtd_actual: projected * (new Date().getDate() / Math.max(days, 1)),
-          monthly_budget: total ? total * 1.1 : 0,
-          budget_variance: total ? projected - total * 1.1 : 0,
-        });
-
-        setTopMovers([]);
+        if (alive) {
+          setCostTrend(series);
+          setKeyInsights({
+            highest_single_day: highest,
+            projected_month_end: projected,
+            mtd_actual: projected * (new Date().getDate() / Math.max(days, 1)),
+            monthly_budget: total ? total * 1.1 : 0,
+            budget_variance: total ? projected - total * 1.1 : 0,
+          });
+          setTopMovers([]);
+        }
       })
       .catch((err) => {
         console.error("Error loading data:", err);
-        setError("Failed to load cost data. Please try again.");
+        if (alive) setError("Failed to load cost data. Please verify /api rewrites or backend availability.");
       })
-      .finally(() => {
-        setLoading(false);
-      });
-  };
+      .finally(() => alive && setLoading(false));
+
+    return () => { alive = false; };
+  }, [dateRange, reloadToken]);
 
   const handleViewDetails = (finding) => {
     const evidence = JSON.stringify(finding.evidence, null, 2);
@@ -487,8 +515,11 @@ ${finding.suggested_action}
     axios.get(`${API}/findings?sort=savings&limit=1000`)
       .then((response) => {
         const data = Array.isArray(response.data) ? response.data : [];
-        const headers = ["Title", "Type", "Severity", "Monthly Savings", "Resource ID", "Action"];
-        const rows = data.map(f => [f.title, f.type, f.severity, f.monthly_savings_usd_est, f.resource_id || "", f.suggested_action]);
+        const headers = ["Title", "Type", "Severity", "Monthly Savings", "Resource ID", "Action", "Confidence"];
+        const rows = data.map(f => [
+          f.title, f.type, f.severity, f.monthly_savings_usd_est, f.resource_id || "", f.suggested_action,
+          f.confidence || sevToConfidence(f.severity)
+        ]);
         const csv = [headers, ...rows].map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
         const blob = new Blob([csv], { type: "text/csv" });
         const url = URL.createObjectURL(blob);
@@ -503,6 +534,8 @@ ${finding.suggested_action}
         alert("Export failed. Please try again.");
       });
   };
+
+  const toggleConviction = (level) => setConviction(prev => (prev === level ? "all" : level));
 
   if (loading) {
     return (
@@ -526,7 +559,7 @@ ${finding.suggested_action}
     );
   }
 
-  const { kpis, top_products, recent_findings } = summary;
+  const { kpis, top_products } = summary;
 
   // Additional static savings to demo cards
   const additionalSavings = {
@@ -546,18 +579,15 @@ ${finding.suggested_action}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {/* ⬇️ Your icon next to the title */}
-              <img src={logo} alt="Cloud & Capital" className="h-8 w-8 rounded" />
-              <div>
-                <h1 className="text-2xl font-bold text-brand-ink">Cloud Cost Guard</h1>
-                <p className="text-sm text-brand-muted">Multi-cloud cost optimization</p>
+              <img src={logo} alt="Cloud & Capital" className="brand-logo" />
+              <div className="leading-tight">
+                <h1 className="text-2xl font-semibold text-brand-ink">Cloud Cost Guard</h1>
+                <p className="text-sm text-brand-muted -mt-0.5">Multi-cloud cost optimization</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <Select value={dateRange} onValueChange={setDateRange}>
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger className="w-36">{/* wider to fit text */}<SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="7d">Last 7 days</SelectItem>
                   <SelectItem value="30d">Last 30 days</SelectItem>
@@ -568,7 +598,8 @@ ${finding.suggested_action}
                 <Download className="h-4 w-4 mr-2" />
                 Export CSV
               </Button>
-              <Button onClick={loadAllData} className="btn-brand-primary">
+              <Button onClick={() => setReloadToken(t => t + 1)} className="btn-brand-primary">
+                <TrendingUp className="h-4 w-4 mr-2" />
                 Refresh
               </Button>
             </div>
@@ -582,7 +613,15 @@ ${finding.suggested_action}
           <Alert className="bg-blue-50 border-blue-200">
             <AlertTriangle className="h-4 w-4 text-blue-600" />
             <AlertDescription className="text-blue-800">
-              <span className="font-medium">Data Source:</span> Mock AWS CUR & Metrics • <span className="ml-2">Last Updated: {formatTimestamp(summary.generated_at)}</span>
+              <span className="font-medium">Data Source:</span>
+              <span className="ml-2 underline decoration-dotted">AWS Cost &amp; Usage Reports</span>
+              <span className="mx-2">•</span>
+              <span className="underline decoration-dotted">CloudWatch Metrics</span>
+              <span className="mx-2">•</span>
+              <span className="underline decoration-dotted">Resource Inventory APIs</span>
+              <span className="mx-3 text-brand-muted">
+                Last Updated: {formatTimestamp(summary.generated_at)}
+              </span>
             </AlertDescription>
           </Alert>
         </div>
@@ -617,24 +656,50 @@ ${finding.suggested_action}
 
           {/* Findings */}
           <TabsContent value="findings" className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
               <h2 className="text-xl font-semibold text-brand-ink">Cost Optimization Findings</h2>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={conviction === "high" ? "default" : "outline"}
+                  className={conviction === "high" ? "btn-brand-primary" : "btn-brand-outline"}
+                  onClick={() => setConviction(conviction === "high" ? "all" : "high")}
+                >
+                  High Conviction
+                  <Badge className="ml-2">{highCount}</Badge>
+                </Button>
+                <Button
+                  variant={conviction === "low" ? "default" : "outline"}
+                  className={conviction === "low" ? "btn-brand-primary" : "btn-brand-outline"}
+                  onClick={() => setConviction(conviction === "low" ? "all" : "low")}
+                >
+                  Low Conviction
+                  <Badge className="ml-2">{lowCount}</Badge>
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
               <Badge className="badge-brand text-brand-success border-brand-success/20">
                 {formatCurrency(updatedKpis.savings_ready_usd)}/month potential
               </Badge>
+              {conviction !== "all" && (
+                <span className="text-xs text-brand-muted">
+                  Showing {filteredFindings.length} of {normalizedFindings.length} findings
+                </span>
+              )}
             </div>
 
-            {findings.length === 0 ? (
+            {filteredFindings.length === 0 ? (
               <Card className="kpi-card">
                 <CardContent className="text-center py-12">
                   <CheckCircle className="h-12 w-12 text-brand-success mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-brand-ink mb-2">All Optimized!</h3>
-                  <p className="text-brand-muted">No cost optimization opportunities found at this time.</p>
+                  <p className="text-brand-muted">No cost optimization opportunities found for this filter.</p>
                 </CardContent>
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {findings.map((f) => <FindingCard key={f.finding_id} finding={f} onViewDetails={handleViewDetails} />)}
+                {filteredFindings.map((f) => <FindingCard key={f.finding_id || `${f.title}-${f.resource_id || ""}`} finding={f} onViewDetails={handleViewDetails} />)}
               </div>
             )}
           </TabsContent>
@@ -669,7 +734,7 @@ ${finding.suggested_action}
                   {[
                     { type: "Under-utilized", count: updatedKpis.underutilized_count, color: "bg-blue-500" },
                     { type: "Orphaned", count: updatedKpis.orphans_count, color: "bg-yellow-500" },
-                    { type: "Idle", count: findings.filter(f => String(f.title).toLowerCase().includes("idle")).length, color: "bg-red-500" }
+                    { type: "Idle", count: normalizedFindings.filter(f => String(f.title).toLowerCase().includes("idle")).length, color: "bg-red-500" }
                   ].map((it, i) => (
                     <div key={i} className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
