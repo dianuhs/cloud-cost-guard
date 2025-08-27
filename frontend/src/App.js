@@ -3,7 +3,7 @@ import "./App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import axios from "axios";
 
-// Logo (PNG). If your logo path differs, update the import below.
+// If you have a PNG/SVG logo, import it here (or remove this <img/> later)
 import logo from "./assets/cloud-and-capital-icon.png";
 
 // Recharts
@@ -30,12 +30,10 @@ import {
   CheckCircle, XCircle
 } from "lucide-react";
 
-/* ----------------------------------------------------------
-   IMPORTANT: Force API to preview backend so data always loads
------------------------------------------------------------*/
-const API = "https://cloudcostguard.preview.emergentagent.com/api";
+/* ---- FORCE calls to same-origin proxy ---- */
+const API = "/api";
 
-/* ---------- Utils ---------- */
+/* ---------- Utils, components, etc. (unchanged below) ---------- */
 const formatCurrency = (amount) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 })
     .format(Number(amount || 0));
@@ -108,7 +106,6 @@ const EMPTY_SUMMARY = {
   generated_at: new Date().toISOString(),
 };
 
-/* ---------- UI parts ---------- */
 const KPICard = ({ title, value, change, icon: Icon, subtitle, dataFreshness }) => (
   <Card className="kpi-card hover:shadow-brand-md transition-all duration-200">
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -374,7 +371,6 @@ const Dashboard = () => {
   const [error, setError] = useState(null);
   const [dateRange, setDateRange] = useState("30d");
   const [reloadToken, setReloadToken] = useState(0);
-  const [conviction, setConviction] = useState("all"); // all | high | low
 
   const normalizedFindings = useMemo(() => {
     const seen = new Set();
@@ -389,19 +385,9 @@ const Dashboard = () => {
     return out;
   }, [findings]);
 
-  const filteredFindings = useMemo(() => {
-    if (conviction === "all") return normalizedFindings;
-    const isHigh = (c) => c === "high" || c === "very_high";
-    const isLow = (c) => c === "low" || c === "medium";
-    return normalizedFindings.filter(f => (conviction === "high" ? isHigh(f.confidence) : isLow(f.confidence)));
-  }, [normalizedFindings, conviction]);
-
-  const highCount = useMemo(() => normalizedFindings.filter(f => ["high", "very_high"].includes(f.confidence)).length, [normalizedFindings]);
-  const lowCount  = useMemo(() => normalizedFindings.filter(f => ["low", "medium"].includes(f.confidence)).length, [normalizedFindings]);
-
   const getJSON = async (path) => {
-    // Single, forced origin to avoid any rewrite/CORS issues
     const url = `${API}${path}`;
+    console.log("[Cloud Cost Guard] Fetch:", url);
     const { data } = await axios.get(url);
     return data;
   };
@@ -457,7 +443,7 @@ const Dashboard = () => {
 
         setTopMovers([]);
       } catch (e) {
-        console.error("Load error:", e?.message || e);
+        console.error("Load error:", e?.message || e, e?.response?.status, e?.config?.url);
         if (alive) setError("Failed to load cost data from backend.");
       } finally {
         if (alive) setLoading(false);
@@ -469,40 +455,7 @@ const Dashboard = () => {
 
   const handleViewDetails = (finding) => {
     const evidence = JSON.stringify(finding.evidence, null, 2);
-    const assumptions = finding.assumptions ? finding.assumptions.join("\n• ") : "None specified";
-    const details = `
-FINDING DETAILS
-==============
-Title: ${finding.title}
-Severity: ${String(finding.severity || "").toUpperCase()} | Confidence: ${String(finding.confidence || "").replace("_", " ").toUpperCase()}
-Monthly Savings: ${formatCurrency(finding.monthly_savings_usd_est)}
-
-IMPLEMENTATION
-=============
-Risk Level: ${finding.risk_level}
-Estimated Time: ${finding.implementation_time ?? "-"}
-Last Analyzed: ${formatTimestamp(finding.last_analyzed)}
-
-METHODOLOGY
-===========
-${finding.methodology || "Standard cost optimization analysis"}
-
-EVIDENCE
-========
-${evidence}
-
-ASSUMPTIONS
-===========
-• ${assumptions}
-
-RECOMMENDED COMMANDS
-===================
-${finding.commands ? finding.commands.join("\n") : "No specific commands provided"}
-
-ACTION REQUIRED
-===============
-${finding.suggested_action}
-`;
+    const details = `FINDING: ${finding.title}\nSavings: ${formatCurrency(finding.monthly_savings_usd_est)}\n\n${evidence}`;
     alert(details);
   };
 
@@ -557,7 +510,6 @@ ${finding.suggested_action}
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand-bg to-brand-light">
-      {/* Header */}
       <div className="nav-header">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
@@ -591,7 +543,6 @@ ${finding.suggested_action}
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Data Source Notice */}
         <div className="mb-6">
           <Alert className="bg-blue-50 border-blue-200">
             <AlertTriangle className="h-4 w-4 text-blue-600" />
@@ -609,7 +560,6 @@ ${finding.suggested_action}
           </Alert>
         </div>
 
-        {/* KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <KPICard title="Total 30d Cost" value={formatCurrency(kpis.total_30d_cost)} change={kpis.wow_percent} icon={DollarSign} subtitle="vs last week" dataFreshness={kpis.data_freshness_hours} />
           <KPICard title="Savings Ready" value={formatCurrency(kpis.savings_ready_usd)} icon={TrendingDown} subtitle="potential monthly savings" dataFreshness={kpis.data_freshness_hours} />
@@ -617,19 +567,16 @@ ${finding.suggested_action}
           <KPICard title="Orphaned Resources" value={kpis.orphans_count} icon={HardDrive} subtitle="unattached volumes" dataFreshness={kpis.data_freshness_hours} />
         </div>
 
-        {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <CostTrendChart data={costTrend} label={trendLabel} />
-          <ServiceBreakdownChart data={serviceBreakdown.data} />
+          <ServiceBreakdownChart data={Array.isArray(serviceBreakdown.data) ? serviceBreakdown.data : []} />
         </div>
 
-        {/* Insights */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <TopMoversCard movers={topMovers} />
           <KeyInsightsCard insights={keyInsights} />
         </div>
 
-        {/* Tabs */}
         <Tabs defaultValue="findings" className="space-y-6">
           <TabsList className="tabs-list grid w-full grid-cols-3">
             <TabsTrigger value="findings" className="tab-trigger">Findings</TabsTrigger>
@@ -637,18 +584,13 @@ ${finding.suggested_action}
             <TabsTrigger value="overview" className="tab-trigger">Overview</TabsTrigger>
           </TabsList>
 
-          {/* Findings */}
           <TabsContent value="findings" className="space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-              <h2 className="text-xl font-semibold text-brand-ink">Cost Optimization Findings</h2>
-            </div>
-
             <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-brand-ink">Cost Optimization Findings</h2>
               <Badge className="badge-brand text-brand-success border-brand-success/20">
                 {formatCurrency(kpis.savings_ready_usd)}/month potential
               </Badge>
             </div>
-
             {findings.length === 0 ? (
               <Card className="kpi-card">
                 <CardContent className="text-center py-12">
@@ -659,12 +601,11 @@ ${finding.suggested_action}
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {findings.map((f) => <FindingCard key={f.finding_id || `${f.title}-${f.resource_id || ""}`} finding={f} onViewDetails={handleViewDetails} />)}
+                {normalizedFindings.map((f) => <FindingCard key={f.finding_id || `${f.title}-${f.resource_id || ""}`} finding={f} onViewDetails={handleViewDetails} />)}
               </div>
             )}
           </TabsContent>
 
-          {/* Products */}
           <TabsContent value="products" className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold text-brand-ink">Product Cost Breakdown</h2>
@@ -681,7 +622,6 @@ ${finding.suggested_action}
             </Card>
           </TabsContent>
 
-          {/* Overview */}
           <TabsContent value="overview" className="space-y-6">
             <h2 className="text-xl font-semibold text-brand-ink">Cost Overview</h2>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -694,7 +634,7 @@ ${finding.suggested_action}
                   {[
                     { type: "Under-utilized", count: kpis.underutilized_count, color: "bg-blue-500" },
                     { type: "Orphaned", count: kpis.orphans_count, color: "bg-yellow-500" },
-                    { type: "Idle", count: findings.filter(f => String(f.title).toLowerCase().includes("idle")).length, color: "bg-red-500" }
+                    { type: "Idle", count: Array.isArray(findings) ? findings.filter(f => String(f.title).toLowerCase().includes("idle")).length : 0, color: "bg-red-500" }
                   ].map((it, i) => (
                     <div key={i} className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -714,7 +654,7 @@ ${finding.suggested_action}
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {summary.recent_findings.slice(0, 5).map((f, i) => (
+                    {Array.isArray(summary.recent_findings) ? summary.recent_findings.slice(0, 5).map((f, i) => (
                       <div key={i} className="flex items-center justify-between p-3 bg-brand-bg/50 rounded-lg border border-brand-line">
                         <div className="flex items-center gap-2">
                           {getSeverityIcon(f.severity)}
@@ -722,7 +662,7 @@ ${finding.suggested_action}
                         </div>
                         <span className="text-sm font-medium text-brand-success">{formatCurrency(f.monthly_savings_usd_est)}</span>
                       </div>
-                    ))}
+                    )) : null}
                   </div>
                 </CardContent>
               </Card>
