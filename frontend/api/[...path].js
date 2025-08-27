@@ -1,6 +1,5 @@
-// frontend/api/[...path].js
-// Serverless proxy to the preview backend so the frontend can call /api/*
-// Works on Vercel with Node 20+ (fetch is built-in)
+// Serverless proxy so /api/* on your domain forwards to Emergent preview backend
+// Works on Vercel Node 20+. No config needed beyond this file.
 
 module.exports = async (req, res) => {
   try {
@@ -9,7 +8,6 @@ module.exports = async (req, res) => {
     const qs = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
     const target = `https://cloudcostguard.preview.emergentagent.com/api/${tail}${qs}`;
 
-    // Collect body (for non-GET/HEAD, though your dashboard only does GETs)
     let body;
     if (req.method !== "GET" && req.method !== "HEAD") {
       const chunks = [];
@@ -17,21 +15,17 @@ module.exports = async (req, res) => {
       body = Buffer.concat(chunks);
     }
 
-    // Forward a minimal, safe header set
-    const fwdHeaders = {
-      "content-type": req.headers["content-type"] || undefined,
-      "authorization": req.headers["authorization"] || undefined,
-      "accept": req.headers["accept"] || "application/json",
-    };
-
     const resp = await fetch(target, {
       method: req.method,
-      headers: fwdHeaders,
+      headers: {
+        "content-type": req.headers["content-type"] || undefined,
+        "authorization": req.headers["authorization"] || undefined,
+        "accept": req.headers["accept"] || "application/json",
+      },
       body,
       redirect: "manual",
     });
 
-    // Pass through status and important headers
     res.status(resp.status);
     const ct = resp.headers.get("content-type");
     if (ct) res.setHeader("content-type", ct);
@@ -45,3 +39,4 @@ module.exports = async (req, res) => {
     res.status(502).json({ error: "Upstream fetch failed" });
   }
 };
+
