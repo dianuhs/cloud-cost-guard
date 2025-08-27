@@ -1,5 +1,5 @@
 {
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "https://api.cloudandcapital.com/api/$1" }
+    { "source": "/api/:path*", "destination": "https://cloudcostguard.preview.emergentagent.com/api/:path*" }
   ]
 }
