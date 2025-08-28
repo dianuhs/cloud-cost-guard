@@ -1,18 +1,9 @@
-// Proxies /api/summary?window=30d -> `${UPSTREAM_BASE}/api/summary?window=30d`
+// Debug: just show what URL we'd call (no fetch yet)
 module.exports = async (req, res) => {
-  try {
-    const base = process.env.UPSTREAM_BASE;
-    if (!base) return res.status(500).json({ error: "UPSTREAM_BASE not set" });
+  const base = process.env.UPSTREAM_BASE || null;
+  const qs = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
+  const target = base ? `${base}/api/summary${qs}` : null;
 
-    const qs = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
-    const url = `${base}/api/summary${qs}`;
-
-    const r = await fetch(url, { headers: { accept: "application/json" } });
-    res.status(r.status);
-    r.headers.forEach((v, k) => res.setHeader(k, v));
-    const buf = Buffer.from(await r.arrayBuffer());
-    res.send(buf);
-  } catch (e) {
-    res.status(502).json({ error: "Proxy error", detail: String(e?.message || e) });
-  }
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.status(200).send(JSON.stringify({ ok: true, base, target }));
 };
