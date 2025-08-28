@@ -5,7 +5,7 @@ module.exports = async (req, res) => {
     if (!base) return res.status(500).json({ error: "UPSTREAM_BASE not set" });
 
     const qs = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
-    const url = `${base}/api/summary${qs}`;
+    const url = `${base}/summary${qs}`;
 
     const r = await fetch(url, { headers: { accept: "application/json" } });
     res.status(r.status);
