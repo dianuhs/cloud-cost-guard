@@ -1,5 +1,4 @@
-
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import axios from "axios";
@@ -27,7 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import {
   DollarSign, TrendingUp, TrendingDown, AlertTriangle, Server, HardDrive, Eye,
   Download, BarChart3, Target, PieChart as PieChartIcon, TrendingUp as TrendingUpIcon,
-  CheckCircle, XCircle, Activity
+  CheckCircle, XCircle, Activity, Upload as UploadIcon, RotateCw
 } from "lucide-react";
 
 /* Same-origin API via serverless proxy */
@@ -44,7 +43,7 @@ const formatPercent = (percent) => {
   return `${sign}${p.toFixed(1)}%`;
 };
 
-/* US date format MM/DD/YYYY hh:mm am/pm in blue text */
+/* US date format (MM/DD/YYYY hh:mm am/pm) */
 const formatTimestampUS = (timestamp) => {
   if (!timestamp) return "-";
   const d = new Date(timestamp);
@@ -115,7 +114,38 @@ const EMPTY_SUMMARY = {
   generated_at: new Date().toISOString(),
 };
 
-/* Reusable UI bits (unchanged except colors/fonts already in CSS) */
+/* ---------- CSV parsing helpers (client-side, no deps) ---------- */
+function parseCSV(text) {
+  const lines = text.replace(/\r/g, "").split("\n").filter(l => l.trim().length > 0);
+  if (!lines.length) return [];
+  const split = (line) => {
+    const out = [];
+    let cur = "", q = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (q && i + 1 < line.length && line[i + 1] === '"') { cur += '"'; i++; }
+        else q = !q;
+      } else if (ch === "," && !q) {
+        out.push(cur); cur = "";
+      } else cur += ch;
+    }
+    out.push(cur);
+    return out.map(v => v.trim().replace(/^"(.*)"$/, "$1"));
+  };
+  const headers = split(lines[0]);
+  return lines.slice(1).map(line => {
+    const cells = split(line);
+    const row = {};
+    headers.forEach((h, i) => row[h] = cells[i]);
+    return row;
+  });
+}
+
+const pickKey = (keys, patterns) =>
+  keys.find(k => patterns.some(p => k.toLowerCase().includes(p))) || null;
+
+/* ---------- Components ---------- */
 const KPICard = ({ title, value, change, icon: Icon, subtitle, dataFreshness }) => (
   <Card className="kpi-card hover:shadow-brand-md transition-all duration-200">
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -178,7 +208,7 @@ const ServiceBreakdownChart = ({ data }) => (
                 {data.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
               </Pie>
               <Tooltip contentStyle={{ backgroundColor: "#FFF", border: "1px solid #E9E3DE", borderRadius: 8, color: "#0A0A0A" }}
-                formatter={(val, _name, props) => [formatCurrency(val), `${props.payload.name} (${props.payload.percentage}%)`]} />
+                formatter={(val, _n, props) => [formatCurrency(val), `${props.payload.name} (${props.payload.percentage}%)`]} />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -349,6 +379,10 @@ const Dashboard = () => {
   const [dateRange, setDateRange] = useState("30d");
   const [reloadToken, setReloadToken] = useState(0);
 
+  /* CSV mode controls */
+  const [csvMode, setCsvMode] = useState(false);
+  const fileRef = useRef(null);
+
   const normalizedFindings = useMemo(() => {
     const seen = new Set();
     const out = [];
@@ -369,7 +403,9 @@ const Dashboard = () => {
     return data;
   };
 
+  /* Load backend (demo) data */
   useEffect(() => {
+    if (csvMode) return; // don't clobber CSV view
     let alive = true;
     setLoading(true);
     setError(null);
@@ -456,7 +492,144 @@ const Dashboard = () => {
     })();
 
     return () => { alive = false; };
-  }, [dateRange, reloadToken]);
+  }, [dateRange, reloadToken, csvMode]);
+
+  /* ----- CSV uploader (AWS Cost Explorer) ----- */
+  const handleChooseCSV = () => fileRef.current?.click();
+
+  const handleCSV = async (file) => {
+    try {
+      const text = await file.text();
+      const rows = parseCSV(text);
+      if (!rows.length) return alert("CSV seems empty.");
+
+      const keys = Object.keys(rows[0] || {});
+      const dateKey = pickKey(keys, ["date", "start", "usage", "time"]);
+      const serviceKey = pickKey(keys, ["service", "productname", "product"]);
+      const costKey = pickKey(keys, ["unblended", "amortized", "blended", "netamortized", "cost", "amount"]);
+
+      if (!dateKey || !serviceKey || !costKey) {
+        return alert("Couldn't detect Date / Service / Cost columns. Export a Cost Explorer CSV grouped by Service (Daily) and try again.");
+      }
+
+      // Normalize rows
+      const norm = rows.map(r => {
+        const rawCost = String(r[costKey] ?? "").replace(/[^0-9\.\-]/g, "");
+        const cost = Number.parseFloat(rawCost || "0") || 0;
+        const d = new Date(r[dateKey]);
+        if (isNaN(d.getTime())) return null;
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth()+1).padStart(2,"0");
+        const dd = String(d.getDate()).padStart(2,"0");
+        return {
+          dateISO: `${yyyy}-${mm}-${dd}`,
+          service: String(r[serviceKey] || "").trim() || "Unknown",
+          cost
+        };
+      }).filter(Boolean);
+
+      if (!norm.length) return alert("No parsable rows found in CSV.");
+
+      // Determine window: last up to 30 distinct days, and the previous same-size window (if present)
+      const datesAsc = Array.from(new Set(norm.map(n => n.dateISO))).sort();
+      const N = Math.min(30, datesAsc.length);
+      const currentDates = datesAsc.slice(-N);
+      const prevDates = datesAsc.slice(-(2*N), -N);
+
+      // Group helpers
+      const sumBy = (arr, keyFn) => {
+        const m = new Map();
+        for (const x of arr) {
+          const k = keyFn(x);
+          m.set(k, (m.get(k) || 0) + x.cost);
+        }
+        return m;
+      };
+
+      const currentRows = norm.filter(n => currentDates.includes(n.dateISO));
+      const prevRows = norm.filter(n => prevDates.includes(n.dateISO));
+
+      const byServiceCurrent = sumBy(currentRows, r => r.service);
+      const byServicePrev = sumBy(prevRows, r => r.service);
+      const totalCurrent = Array.from(byServiceCurrent.values()).reduce((a,b)=>a+b,0);
+      const totalPrev = Array.from(byServicePrev.values()).reduce((a,b)=>a+b,0);
+
+      // Summary
+      const csvSummary = {
+        kpis: {
+          total_30d_cost: totalCurrent,
+          wow_percent: totalPrev > 0 ? ((totalCurrent - totalPrev) / totalPrev) * 100 : 0,
+          mom_percent: 0,
+          savings_ready_usd: 0,
+          underutilized_count: 0,
+          orphans_count: 0,
+          data_freshness_hours: 0
+        },
+        top_products: Array.from(byServiceCurrent.entries())
+          .map(([service, amount]) => ({ _id: service, name: service, service, window: `${N}d`, amount_usd: amount }))
+          .sort((a,b)=>b.amount_usd - a.amount_usd)
+          .slice(0, 20),
+        recent_findings: [],
+        window: `${N}d`,
+        generated_at: new Date().toISOString()
+      };
+
+      // Movers
+      const movers = Array.from(new Set([...byServiceCurrent.keys(), ...byServicePrev.keys()])).map(svc => {
+        const curr = byServiceCurrent.get(svc) || 0;
+        const prev = byServicePrev.get(svc) || 0;
+        const delta = curr - prev;
+        const pct = prev > 0 ? (delta / prev) * 100 : (curr > 0 ? 100 : 0);
+        return {
+          service: svc,
+          previous_cost: prev,
+          current_cost: curr,
+          change_amount: Math.round(delta * 100) / 100,
+          change_percent: Math.round(pct * 10) / 10
+        };
+      }).sort((a,b)=>Math.abs(b.change_amount) - Math.abs(a.change_amount));
+
+      // Daily trend (current window)
+      const byDateCurrent = sumBy(currentRows, r => r.dateISO);
+      const costTrendSeries = currentDates.map(iso => {
+        const [y,m,d] = iso.split("-");
+        const display = new Date(`${iso}T00:00:00Z`).toLocaleDateString();
+        return { formatted_date: display, cost: byDateCurrent.get(iso) || 0 };
+      });
+
+      // Service breakdown
+      const total = totalCurrent;
+      const palette = ["#8B6F47","#B5905C","#D8C3A5","#A8A7A7","#E98074","#C0B283","#F4E1D2","#E6B89C"];
+      const breakdown = csvSummary.top_products.slice(0, 8).map((p, i) => ({
+        name: p.name, value: p.amount_usd,
+        percentage: total ? Number(((p.amount_usd / total) * 100).toFixed(1)) : 0,
+        fill: palette[i % palette.length]
+      }));
+
+      // Apply to UI
+      setSummary(csvSummary);
+      setTopMovers(movers);
+      setCostTrend(costTrendSeries);
+      setServiceBreakdown({ data: breakdown, total });
+      setFindings([]); // CSV mode has no findings
+      setKeyInsights({
+        highest_single_day: costTrendSeries.reduce((m, pt) => (pt.cost > m.amount ? { date: pt.formatted_date, amount: pt.cost } : m), { date: "-", amount: 0 }),
+        projected_month_end: costTrendSeries.reduce((s, pt)=>s+pt.cost, 0),
+        mtd_actual: costTrendSeries.reduce((s, pt)=>s+pt.cost, 0),
+        monthly_budget: total ? total * 1.1 : 0,
+        budget_variance: total ? (costTrendSeries.reduce((s,p)=>s+p.cost,0) - total*1.1) : 0
+      });
+      setCsvMode(true);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to read CSV. Please export from AWS Cost Explorer (Group by Service, Time: Daily) and try again.");
+    }
+  };
+
+  const resetCSV = () => {
+    setCsvMode(false);
+    setReloadToken(t => t + 1); // refetch backend data
+  };
 
   const handleViewDetails = (finding) => {
     const evidence = JSON.stringify(finding.evidence, null, 2);
@@ -509,9 +682,10 @@ const Dashboard = () => {
 
   const { kpis, top_products } = summary;
   const trendLabel =
+    (csvMode ? `Cost trends over the last ${summary.window}` :
     dateRange === "30d" ? "Cost trends over the last 30 days" :
     dateRange === "7d"  ? "Cost trends over the last 7 days"  :
-                          "Cost trends over the last 90 days";
+                          "Cost trends over the last 90 days");
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand-bg to-brand-light">
@@ -521,13 +695,33 @@ const Dashboard = () => {
             <div className="flex items-center gap-3">
               <img src={logo} alt="Cloud & Capital" className="brand-logo" />
               <div className="leading-tight">
-                {/* Product title in serif, like your screenshot */}
                 <h1 className="brand-title">Cloud Cost Guard</h1>
                 <p className="brand-subtitle">Multi-cloud cost optimization</p>
               </div>
             </div>
+
             <div className="flex items-center gap-2">
-              <Select value={dateRange} onValueChange={setDateRange}>
+              {/* Try your AWS CSV */}
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                ref={fileRef}
+                style={{ display: "none" }}
+                onChange={(e) => e.target.files?.[0] && handleCSV(e.target.files[0])}
+              />
+              {!csvMode ? (
+                <Button variant="outline" onClick={handleChooseCSV} className="btn-brand-outline">
+                  <UploadIcon className="h-4 w-4 mr-2" />
+                  Try your AWS CSV
+                </Button>
+              ) : (
+                <Button variant="outline" onClick={resetCSV} className="btn-brand-outline">
+                  <RotateCw className="h-4 w-4 mr-2" />
+                  Reset (demo data)
+                </Button>
+              )}
+
+              <Select value={dateRange} onValueChange={setDateRange} disabled={csvMode}>
                 <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="7d">Last 7 days</SelectItem>
@@ -535,12 +729,15 @@ const Dashboard = () => {
                   <SelectItem value="90d">Last 90 days</SelectItem>
                 </SelectContent>
               </Select>
+
               <Button variant="outline" onClick={exportCSV} className="btn-brand-outline">
                 <Download className="h-4 w-4 mr-2" />
                 Export CSV
               </Button>
-              <Button onClick={() => setReloadToken(t => t + 1)} className="btn-brand-primary">
-                <TrendingUp className="h-4 w-4 mr-2" />
+
+              {/* Refresh with the wave icon, matching the PDF */}
+              <Button onClick={() => (csvMode ? resetCSV() : setReloadToken(t => t + 1))} className="btn-brand-primary">
+                <Activity className="h-4 w-4 mr-2" />
                 Refresh
               </Button>
             </div>
@@ -564,12 +761,13 @@ const Dashboard = () => {
               <span className="mx-3 text-blue-700">
                 Last Updated: {formatTimestampUS(summary.generated_at)}
               </span>
+              {csvMode && <span className="ml-2 badge-brand">CSV Data</span>}
             </AlertDescription>
           </Alert>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <KPICard title="Total 30d Cost" value={formatCurrency(kpis.total_30d_cost)} change={kpis.wow_percent} icon={DollarSign} subtitle="vs last week" dataFreshness={kpis.data_freshness_hours} />
+          <KPICard title={summary.window?.includes("d") ? `Total ${summary.window} Cost` : "Total 30d Cost"} value={formatCurrency(kpis.total_30d_cost)} change={kpis.wow_percent} icon={DollarSign} subtitle="vs last period" dataFreshness={kpis.data_freshness_hours} />
           <KPICard title="Savings Ready" value={formatCurrency(kpis.savings_ready_usd)} icon={TrendingDown} subtitle="potential monthly savings" dataFreshness={kpis.data_freshness_hours} />
           <KPICard title="Under-utilized" value={kpis.underutilized_count} icon={Server} subtitle="compute resources" dataFreshness={kpis.data_freshness_hours} />
           <KPICard title="Orphaned Resources" value={kpis.orphans_count} icon={HardDrive} subtitle="unattached volumes" dataFreshness={kpis.data_freshness_hours} />
@@ -581,7 +779,7 @@ const Dashboard = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <TopMoversCard movers={topMovers} windowLabel={dateRange} />
+          <TopMoversCard movers={topMovers} windowLabel={csvMode ? summary.window : dateRange} />
           <KeyInsightsCard insights={keyInsights} />
         </div>
 
@@ -599,12 +797,14 @@ const Dashboard = () => {
                 {formatCurrency(kpis.savings_ready_usd)}/month potential
               </Badge>
             </div>
-            {findings.length === 0 ? (
+            {csvMode || findings.length === 0 ? (
               <Card className="kpi-card">
                 <CardContent className="text-center py-12">
                   <CheckCircle className="h-12 w-12 text-brand-success mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-brand-ink mb-2">All Optimized!</h3>
-                  <p className="text-brand-muted">No cost optimization opportunities found at this time.</p>
+                  <h3 className="text-lg font-medium text-brand-ink mb-2">{csvMode ? "CSV mode: findings unavailable" : "All Optimized!"}</h3>
+                  <p className="text-brand-muted">
+                    {csvMode ? "Upload includes costs only. Connect read-only APIs to analyze findings." : "No cost optimization opportunities found at this time."}
+                  </p>
                 </CardContent>
               </Card>
             ) : (
@@ -617,7 +817,7 @@ const Dashboard = () => {
           <TabsContent value="products" className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold text-brand-ink">Product Cost Breakdown</h2>
-              <Badge className="badge-brand">Last {dateRange === "7d" ? "7" : dateRange === "30d" ? "30" : "90"} days</Badge>
+              <Badge className="badge-brand">Last {csvMode ? summary.window.replace("d","") : (dateRange === "7d" ? "7" : dateRange === "30d" ? "30" : "90")} days</Badge>
             </div>
             <Card className="kpi-card">
               <CardHeader>
@@ -662,7 +862,7 @@ const Dashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {Array.isArray(summary.recent_findings) ? summary.recent_findings.slice(0, 5).map((f, i) => (
+                    {(csvMode ? [] : (Array.isArray(summary.recent_findings) ? summary.recent_findings.slice(0, 5) : [])).map((f, i) => (
                       <div key={i} className="flex items-center justify-between p-3 bg-brand-bg/50 rounded-lg border border-brand-line">
                         <div className="flex items-center gap-2">
                           {getSeverityIcon(f.severity)}
@@ -670,7 +870,10 @@ const Dashboard = () => {
                         </div>
                         <span className="text-sm font-medium text-brand-success">{formatCurrency(f.monthly_savings_usd_est)}</span>
                       </div>
-                    )) : null}
+                    ))}
+                    {csvMode && (
+                      <div className="text-sm text-brand-muted">Upload your CSV only affects costs; findings require connected cloud metrics.</div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
