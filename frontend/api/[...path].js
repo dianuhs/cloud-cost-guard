@@ -1,18 +1,29 @@
-// Generic serverless proxy: forwards /api/* on YOUR domain to an upstream backend.
-// Configure the upstream URL via env var UPSTREAM_BASE (no trailing slash).
+// /api/* -> forwards to `${UPSTREAM_BASE}/api/*`
+// Set UPSTREAM_BASE in Vercel (no trailing slash), e.g. https://api.cloudandcapital.com
+
+const hopByHop = new Set([
+  "connection","keep-alive","transfer-encoding","proxy-authenticate",
+  "proxy-authorization","te","trailer","upgrade"
+]);
+
+function joinUrl(base, path) {
+  const b = base.endsWith("/") ? base.slice(0, -1) : base;
+  const p = path.startsWith("/") ? path : `/${path}`;
+  return `${b}${p}`;
+}
 
 module.exports = async (req, res) => {
   try {
-    const upstream = process.env.UPSTREAM_BASE; // e.g. https://api.guard.cloudandcapital.com
+    const upstream = process.env.UPSTREAM_BASE;
     if (!upstream) {
-      res.status(500).json({ error: "UPSTREAM_BASE env var not set for proxy" });
+      res.status(500).json({ error: "UPSTREAM_BASE not set" });
       return;
     }
 
     const segs = Array.isArray(req.query.path) ? req.query.path : [];
     const tail = segs.join("/");
     const qs = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
-    const target = `${upstream.replace(/\/+$/, "")}/api/${tail}${qs}`;
+    const target = joinUrl(upstream, `/api/${tail}${qs}`);
 
     let body;
     if (req.method !== "GET" && req.method !== "HEAD") {
@@ -21,27 +32,22 @@ module.exports = async (req, res) => {
       body = Buffer.concat(chunks);
     }
 
-    const resp = await fetch(target, {
-      method: req.method,
-      headers: {
-        "content-type": req.headers["content-type"] || undefined,
-        "accept": req.headers["accept"] || "application/json"
-        // If your upstream needs auth, you can pass a token from an env var:
-        // "authorization": process.env.UPSTREAM_AUTH || undefined,
-      },
-      body,
-      redirect: "manual"
+    const outHeaders = {};
+    for (const [k, v] of Object.entries(req.headers)) {
+      if (!hopByHop.has(k.toLowerCase())) outHeaders[k] = v;
+    }
+
+    const upstreamResp = await fetch(target, { method: req.method, headers: outHeaders, body });
+
+    res.status(upstreamResp.status);
+    upstreamResp.headers.forEach((v, k) => {
+      if (!hopByHop.has(k.toLowerCase())) res.setHeader(k, v);
     });
 
-    res.status(resp.status);
-    const ct = resp.headers.get("content-type"); if (ct) res.setHeader("content-type", ct);
-    const cc = resp.headers.get("cache-control"); if (cc) res.setHeader("cache-control", cc);
-
-    const buf = Buffer.from(await resp.arrayBuffer());
+    const buf = Buffer.from(await upstreamResp.arrayBuffer());
     res.send(buf);
   } catch (err) {
-    console.error("Proxy error:", err);
-    res.status(502).json({ error: "Upstream fetch failed" });
+    res.status(502).json({ error: "Proxy error", detail: String(err && err.message || err) });
   }
 };
 
