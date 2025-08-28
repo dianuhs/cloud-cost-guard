@@ -5,20 +5,18 @@ from typing import List, Dict, Any
 import math
 import random
 
-app = FastAPI(title="Cloud Cost Guard API", version="1.0.0")
+app = FastAPI(title="Cloud Cost Guard API", version="1.0.1")
 
-# CORS for your Vercel frontend (relaxed by default; tighten as needed)
+# CORS (adjust origins to your Vercel domain if you want to lock down)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # e.g. ["https://your-vercel-domain.vercel.app"]
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ---------- Helpers ----------
-
-TZ = timezone.utc  # keep server UTC; frontend renders local time and US format
+TZ = timezone.utc
 
 AWS_SERVICES = [
     ("EC2-Instance", 0.465),
@@ -27,17 +25,14 @@ AWS_SERVICES = [
     ("ELB",          0.058),
     ("S3",           0.046),
     ("CloudWatch",   0.039),
-    # leftover goes to "Other" if needed
 ]
 
-# brand palette used by your pie
 PALETTE = ["#8B6F47","#B5905C","#D8C3A5","#A8A7A7","#E98074","#C0B283","#F4E1D2","#E6B89C"]
 
 def mmdd(d: datetime) -> str:
     return d.strftime("%m/%d")
 
 def seed_for_month(dt: datetime) -> int:
-    # deterministic per YYYY-MM so demos stay stable
     return int(dt.strftime("%Y%m"))
 
 def window_days(label: str) -> int:
@@ -45,97 +40,77 @@ def window_days(label: str) -> int:
 
 def synthesize_series(days: int, month_seed: int, base_month_total: float) -> List[Dict[str, Any]]:
     """
-    Create a daily cost series with:
-      - weekly pattern (Mon-Fri higher than weekend),
-      - soft upward/downward drift,
-      - light random noise and occasional spike.
-    The sum over 'days' will be close to (base_month_total * days/30).
+    Daily cost series with weekday/weekend pattern, small drift, noise, rare spikes.
+    Returns objects with both display label and ISO date.
     """
     rng = random.Random(month_seed + days)
     today = datetime.now(TZ).replace(hour=0, minute=0, second=0, microsecond=0)
     start = today - timedelta(days=days-1)
 
     target_total = base_month_total * (days / 30.0)
-    # baseline daily average
     avg = target_total / days
 
-    series = []
-    drift = rng.uniform(-0.004, 0.006)  # -0.4% to +0.6% per day drift
+    raw_series = []
+    drift = rng.uniform(-0.004, 0.006)
     for i in range(days):
         d = start + timedelta(days=i)
-
-        # weekly shape: weekends ~ -18%; Wed/Thu slight +5%
-        dow = d.weekday()  # 0=Mon
+        dow = d.weekday()
         weekly = 1.0
-        if dow >= 5:  # Sat/Sun
+        if dow >= 5:
             weekly *= 0.82
-        elif dow in (2, 3):  # Wed/Thu
+        elif dow in (2, 3):
             weekly *= 1.05
 
-        # smooth sin wobble
         wobble = 1.0 + 0.03 * math.sin(i / 2.7)
-
-        # random noise
         noise = rng.uniform(-0.04, 0.04)
-
-        # occasional spike (once every ~12 days)
         spike = 1.0
-        if rng.random() < (1.0 / 12.0):
+        if rng.random() < (1.0/12.0):
             spike = rng.uniform(1.10, 1.22)
-
-        # apply drift relative to series start
         factor = (1.0 + drift) ** i
 
         value = avg * weekly * wobble * factor * (1.0 + noise) * spike
-        series.append({"date": d, "cost": max(0, value)})
+        raw_series.append({"date": d, "cost": max(0, value)})
 
-    # Normalize to hit target_total (keeps chart realistic yet stable)
-    s = sum(pt["cost"] for pt in series) or 1.0
+    s = sum(pt["cost"] for pt in raw_series) or 1.0
     norm = target_total / s
-    for pt in series:
-        pt["cost"] *= norm
-
-    # Return with display label
-    return [{"formatted_date": mmdd(pt["date"]), "cost": round(pt["cost"], 2)} for pt in series]
+    series = []
+    for pt in raw_series:
+        v = round(pt["cost"] * norm, 2)
+        series.append({
+            "formatted_date": mmdd(pt["date"]),     # for charts (MM/DD)
+            "date_iso": pt["date"].date().isoformat(),  # for insights
+            "cost": v
+        })
+    return series
 
 def split_by_service(total_amount: float, month_seed: int) -> List[Dict[str, Any]]:
-    """
-    Allocate monthly total into services roughly matching your PDF.
-    Adds tiny jitter per month so values look alive, but keep the same order.
-    """
     rng = random.Random(month_seed + 999)
     parts = []
-    used = 0.0
-    for idx, (name, share) in enumerate(AWS_SERVICES):
-        # ±3% jitter of each share (bounded)
+    for name, share in AWS_SERVICES:
         jitter = rng.uniform(-0.03, 0.03)
-        adj_share = max(0.01, share * (1.0 + jitter))
-        parts.append((name, adj_share))
-    # normalize shares to sum 1.0
-    total_share = sum(x[1] for x in parts)
+        parts.append((name, max(0.01, share * (1.0 + jitter))))
+    total_share = sum(s for _, s in parts)
     parts = [(n, s/total_share) for (n, s) in parts]
 
-    by_service = []
+    used = 0.0
+    out = []
     for i, (name, share) in enumerate(parts):
-        amount = round(total_amount * share, 2)
-        by_service.append({
+        amt = round(total_amount * share, 2)
+        out.append({
             "name": name,
-            "value": amount,
+            "value": amt,
             "percentage": round(share * 100.0, 1),
             "fill": PALETTE[i % len(PALETTE)]
         })
-        used += amount
-
-    # Adjust rounding residue on the largest service
+        used += amt
     residue = round(total_amount - used, 2)
-    if by_service:
-        by_service[0]["value"] = round(by_service[0]["value"] + residue, 2)
+    if out:
+        out[0]["value"] = round(out[0]["value"] + residue, 2)
+    return out
 
-    return by_service
-
-def calc_movers(by_service_now: List[Dict[str, Any]], by_service_prev: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    prev_map = {s["name"]: s["value"] for s in by_service_prev}
-    now_map  = {s["name"]: s["value"] for s in by_service_now}
+def calc_movers(now_services: List[Dict[str, Any]], prev_services: List[Dict[str, Any]]):
+    prev_map = {s["name"]: s["value"] for s in prev_services}
+    now_map = {s["name"]: s["value"] for s in now_services}
     names = set(prev_map) | set(now_map)
     movers = []
     for n in names:
@@ -150,69 +125,50 @@ def calc_movers(by_service_now: List[Dict[str, Any]], by_service_prev: List[Dict
             "change_amount": delta,
             "change_percent": pct
         })
-    # biggest absolute $ change first
     movers.sort(key=lambda m: abs(m["change_amount"]), reverse=True)
     return movers
 
 def now_iso() -> str:
     return datetime.now(TZ).isoformat()
 
-# ---------- Core “realistic” model ----------
-
 def model_for_window(window_label: str) -> Dict[str, Any]:
-    """
-    Produce a coherent snapshot for a given window (7d/30d/90d).
-    Totals align across:
-      - summary.kpis.total_30d_cost (or N-day cost)
-      - service breakdown (sums to total)
-      - cost trend (sums to total)
-      - movers based on prev vs curr allocations
-    """
     days = window_days(window_label)
     today = datetime.now(TZ)
     month_seed = seed_for_month(today)
 
-    # Choose a believable monthly baseline around ~150k with ±10% monthly drift
     rng = random.Random(month_seed)
     month_baseline = 150_000.0 * rng.uniform(0.9, 1.1)
 
-    # If window != 30, scale to N days
-    window_total = month_baseline * (days / 30.0)
-
-    # Daily series (MM/DD labels)
     series = synthesize_series(days, month_seed, month_baseline)
+    window_total = round(sum(pt["cost"] for pt in series), 2)
 
-    # Use series sum (after synth) as truth for the window total
-    series_total = round(sum(pt["cost"] for pt in series), 2)
-    window_total = series_total
-
-    # Service breakdown for current and previous window
     current_services = split_by_service(window_total, month_seed)
-    prev_services    = split_by_service(window_total * rng.uniform(0.92, 1.08), month_seed - 1)
-
-    # Movers
+    prev_services = split_by_service(window_total * rng.uniform(0.92, 1.08), month_seed - 1)
     movers = calc_movers(current_services, prev_services)
 
-    # Wow percent (prev N vs current N)
     prev_total = round(sum(s["value"] for s in prev_services), 2)
     wow = ((window_total - prev_total) / prev_total) * 100.0 if prev_total > 0 else 0.0
 
-    # Savings and counts (believable ranges)
-    savings_ready = round(window_total * rng.uniform(0.08, 0.14), 2)  # 8–14% of N-day total (≈ monthly potential)
-    underutilized = int(20 + rng.random() * 40)  # 20–60
-    orphans = int(8 + rng.random() * 18)         # 8–26
+    savings_ready = round(window_total * rng.uniform(0.08, 0.14), 2)
+    underutilized = int(20 + rng.random() * 40)
+    orphans = int(8 + rng.random() * 18)
 
-    # Key insights (project month end from last 7 days avg)
+    # Highest day with full date formatting like "Aug 21, 2025"
+    highest_pt = max(series, key=lambda p: p["cost"]) if series else {"date_iso": None, "cost": 0}
+    highest_date_str = "-"
+    if highest_pt.get("date_iso"):
+        d = datetime.fromisoformat(highest_pt["date_iso"])
+        highest_date_str = d.strftime("%b %d, %Y")
+
+    # Key insights / budget
+    monthly_budget = 180000.00
     last_7 = series[-7:] if len(series) >= 7 else series
-    last_7_avg = sum(pt["cost"] for pt in last_7) / max(1, len(last_7))
+    last_7_avg = (sum(pt["cost"] for pt in last_7) / max(1, len(last_7))) if last_7 else 0.0
     projected_month_end = round(last_7_avg * 30.0, 2)
-    highest_pt = max(series, key=lambda p: p["cost"]) if series else {"formatted_date": "-", "cost": 0}
 
-    # Build “top_products” for table (with WoW deltas and % of total)
+    # Build top_products table
     total_curr = max(1.0, sum(s["value"] for s in current_services))
-    total_prev = max(1.0, sum(s["value"] for s in prev_services))
     prev_lookup = {s["name"]: s["value"] for s in prev_services}
-
     top_products = []
     for s in current_services:
         name = s["name"]
@@ -226,10 +182,8 @@ def model_for_window(window_label: str) -> Dict[str, Any]:
             "wow_delta": wow_delta,
             "percent_of_total": pct_total,
         })
-    # sort for table
     top_products.sort(key=lambda x: x["amount_usd"], reverse=True)
 
-    # Findings: a few realistic items
     findings = [
         {
             "finding_id": "ri-m5-4xlarge",
@@ -288,7 +242,7 @@ def model_for_window(window_label: str) -> Dict[str, Any]:
         },
     ]
 
-    out = {
+    return {
         "window": window_label,
         "series": series,
         "services_now": current_services,
@@ -298,29 +252,28 @@ def model_for_window(window_label: str) -> Dict[str, Any]:
         "kpis": {
             "total_30d_cost": round(window_total, 2),
             "wow_percent": round(wow, 1),
-            "mom_percent": round(wow * 0.6, 1),  # simple proxy
+            "mom_percent": round(wow * 0.6, 1),
             "savings_ready_usd": savings_ready,
             "underutilized_count": underutilized,
             "orphans_count": orphans,
-            "data_freshness_hours": rng.choice([0, 0.5, 1, 2]),
+            "data_freshness_hours": 0,  # <-- ALWAYS LIVE
             "last_updated": now_iso(),
         },
         "top_products": top_products,
         "key_insights": {
             "highest_single_day": {
-                "date": highest_pt["formatted_date"],
+                "date": highest_date_str,                   # e.g. "Aug 21, 2025"
                 "amount": round(highest_pt["cost"], 2),
             },
             "projected_month_end": projected_month_end,
             "mtd_actual": round(sum(pt["cost"] for pt in series[-min(len(series), datetime.now(TZ).day):]), 2),
-            "monthly_budget": round(month_baseline * 1.08, 2),
-            "budget_variance": round(projected_month_end - (month_baseline * 1.08), 2),
+            "monthly_budget": monthly_budget,              # <-- Fixed $180,000
+            "budget_variance": round(projected_month_end - monthly_budget, 2),
         },
         "generated_at": now_iso(),
     }
-    return out
 
-# ---------- API Routes ----------
+# ----------------- API ROUTES -----------------
 
 @app.get("/api/summary")
 def get_summary(window: str = Query("30d", regex="^(7d|30d|90d)$")):
@@ -337,17 +290,14 @@ def get_summary(window: str = Query("30d", regex="^(7d|30d|90d)$")):
 def get_cost_trend(days: int = Query(30, ge=7, le=90)):
     window = "7d" if days == 7 else ("30d" if days == 30 else "90d")
     m = model_for_window(window)
-    # Ensure labels are in US mm/dd format (already done in synthesize_series)
+    # includes formatted_date (MM/DD) and date_iso
     return m["series"]
 
 @app.get("/api/service-breakdown")
 def get_service_breakdown(window: str = Query("30d", regex="^(7d|30d|90d)$")):
     m = model_for_window(window)
     total = round(sum(s["value"] for s in m["services_now"]), 2)
-    return {
-        "data": m["services_now"],
-        "total": total
-    }
+    return {"data": m["services_now"], "total": total}
 
 @app.get("/api/top-movers")
 def get_top_movers(days: int = Query(7, ge=7, le=90)):
@@ -355,7 +305,7 @@ def get_top_movers(days: int = Query(7, ge=7, le=90)):
     m = model_for_window(window)
     return m["movers"][:10]
 
-# Alias to support earlier frontend versions
+# Frontend-compatible alias:
 @app.get("/api/movers")
 def get_movers(window: str = Query("7d", regex="^(7d|30d|90d)$")):
     m = model_for_window(window)
@@ -377,3 +327,4 @@ def get_key_insights(window: str = Query("30d", regex="^(7d|30d|90d)$")):
 @app.get("/")
 def health():
     return {"status": "ok", "time": now_iso()}
+
