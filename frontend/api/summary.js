@@ -10,10 +10,10 @@ module.exports = async (req, res) => {
     const r = await fetch(url, { headers: { accept: "application/json" } });
     res.status(r.status);
     r.headers.forEach((v, k) => res.setHeader(k, v));
-
     const buf = Buffer.from(await r.arrayBuffer());
     res.send(buf);
   } catch (e) {
     res.status(502).json({ error: "Proxy error", detail: String(e?.message || e) });
   }
 };
+
