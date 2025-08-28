@@ -61,6 +61,28 @@ const formatTimestamp = (ts) => {
   return `${mm}/${dd}/${yyyy} ${hh}:${min} ${ampm}`;
 };
 
+/* Pretty month date for Key Insights (e.g., "Aug 21, 2025") */
+const formatPrettyDate = (input) => {
+  if (!input) return "-";
+  // Already in "Aug 21, 2025" style?
+  if (/[A-Za-z]{3}\s+\d{1,2},\s+\d{4}/.test(input)) return input;
+  // MM/DD or MM/DD/YYYY
+  const parts = String(input).split("/");
+  if (parts.length >= 2) {
+    const [mm, dd, yyyyRaw] = parts;
+    const yyyy = (yyyyRaw && yyyyRaw.length === 4) ? yyyyRaw : String(new Date().getFullYear());
+    const d = new Date(`${yyyy}-${String(mm).padStart(2,"0")}-${String(dd).padStart(2,"0")}T00:00:00`);
+    if (!isNaN(d)) {
+      return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    }
+  }
+  const d = new Date(input);
+  if (!isNaN(d)) {
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
+  return input;
+};
+
 const getConfidenceColor = (confidence) => ({
   very_high: "text-green-700 bg-green-50",
   high: "text-green-600 bg-green-50",
@@ -90,7 +112,7 @@ const getSeverityIcon = (severity) => {
   return <AlertTriangle className="h-4 w-4" />;
 };
 
-/* -------- Presentational components (defined first to avoid hoist issues) -------- */
+/* -------- Presentational components -------- */
 const KPICard = ({ title, value, change, icon: Icon, subtitle, dataFreshness }) => (
   <Card className="kpi-card hover:shadow-brand-md transition-all duration-200">
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -196,27 +218,32 @@ const TopMoversCard = ({ movers, windowLabel = "7d" }) => (
       <CardDescription className="text-brand-muted">Biggest cost changes in the selected window</CardDescription>
     </CardHeader>
     <CardContent>
-      <div className="space-y-3">
-        {movers.slice(0, 6).map((m, i) => (
-          <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-brand-bg/30">
-            <div className="flex items-center gap-3">
-              <div className={`w-2 h-8 rounded ${m.change_amount >= 0 ? "bg-red-500" : "bg-green-500"}`} />
-              <div>
-                <div className="font-medium text-brand-ink text-sm">{m.service}</div>
-                <div className="text-xs text-brand-muted">{formatCurrency(m.previous_cost)} → {formatCurrency(m.current_cost)}</div>
+      {!movers || movers.length === 0 ? (
+        <div className="text-sm text-brand-muted">No movers detected in the last 7 days.</div>
+      ) : (
+        <div className="space-y-3">
+          {movers.slice(0, 6).map((m, i) => (
+            <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-brand-bg/30">
+              <div className="flex items-center gap-3">
+                {/* ↓ Green is good (cost decreased), ↑ Red is bad (cost increased) */}
+                <div className={`w-2 h-8 rounded ${m.change_amount < 0 ? "bg-green-500" : "bg-red-500"}`} />
+                <div>
+                  <div className="font-medium text-brand-ink text-sm">{m.service}</div>
+                  <div className="text-xs text-brand-muted">{formatCurrency(m.previous_cost)} → {formatCurrency(m.current_cost)}</div>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className={`font-semibold text-sm ${m.change_amount < 0 ? "text-green-600" : "text-red-600"}`}>
+                  {m.change_amount >= 0 ? "+" : ""}{formatCurrency(m.change_amount)}
+                </div>
+                <div className={`text-xs ${m.change_amount < 0 ? "text-green-500" : "text-red-500"}`}>
+                  {m.change_percent >= 0 ? "+" : ""}{m.change_percent}%
+                </div>
               </div>
             </div>
-            <div className="text-right">
-              <div className={`font-semibold text-sm ${m.change_amount >= 0 ? "text-red-600" : "text-green-600"}`}>
-                {m.change_amount >= 0 ? "+" : ""}{formatCurrency(m.change_amount)}
-              </div>
-              <div className={`text-xs ${m.change_amount >= 0 ? "text-red-500" : "text-green-500"}`}>
-                {m.change_percent >= 0 ? "+" : ""}{m.change_percent}%
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </CardContent>
   </Card>
 );
@@ -231,7 +258,9 @@ const KeyInsightsCard = ({ insights }) => (
       <div className="space-y-4">
         <div>
           <div className="text-sm text-brand-muted">Highest Single Day</div>
-          <div className="font-semibold text-brand-ink">{insights?.highest_single_day?.date || "-"}</div>
+          <div className="font-semibold text-brand-ink">
+            {formatPrettyDate(insights?.highest_single_day?.date)}
+          </div>
           <div className="text-lg font-bold text-brand-accent">{formatCurrency(insights?.highest_single_day?.amount || 0)}</div>
         </div>
         <Separator />
@@ -245,9 +274,10 @@ const KeyInsightsCard = ({ insights }) => (
           <div className="text-sm text-brand-muted">Budget Performance</div>
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm">MTD: {formatCurrency(insights?.mtd_actual || 0)}</span>
-            <span className="text-sm">Budget: {formatCurrency(insights?.monthly_budget || 0)}</span>
+            {/* Fixed budget at $180,000 */}
+            <span className="text-sm">Budget: {formatCurrency(Number(insights?.monthly_budget ?? 180000))}</span>
           </div>
-          <Progress value={Math.min(((insights?.mtd_actual || 0) / (insights?.monthly_budget || 1)) * 100, 100)} className="h-3" />
+          <Progress value={Math.min(((insights?.mtd_actual || 0) / (Number(insights?.monthly_budget ?? 180000) || 1)) * 100, 100)} className="h-3" />
           <div className="flex justify-between text-xs mt-2">
             <span className="text-brand-muted">Projected: {formatCurrency(insights?.projected_month_end || 0)}</span>
             <span className={`font-semibold ${Number(insights?.budget_variance || 0) >= 0 ? "text-red-600" : "text-green-600"}`}>
@@ -419,13 +449,16 @@ const Dashboard = () => {
         { date: "-", amount: 0 }
       );
       const totalWindow = series.reduce((s, pt) => s + pt.cost, 0);
-      const monthBudget = total ? total * 1.1 : totalWindow * 1.1;
+
+      // >>> Fixed monthly budget at $180,000
+      const FIXED_BUDGET = 180000;
+
       setKeyInsights({
         highest_single_day: highest,
         projected_month_end: totalWindow,
         mtd_actual: totalWindow * (new Date().getDate() / Math.max(days, 1)),
-        monthly_budget: monthBudget,
-        budget_variance: totalWindow - monthBudget
+        monthly_budget: FIXED_BUDGET,
+        budget_variance: totalWindow - FIXED_BUDGET
       });
 
     } catch (err) {
