@@ -24,9 +24,9 @@
 
   --radius-sm:8px;
   --radius-md:12px;
-  --radius-lg:16px;
+  --radius-lg:20px;               /* rounder corners */
   --shadow-sm:0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md:0 6px 16px rgba(10,10,10,0.06);
+  --shadow-md:0 6px 16px rgba(10,10,10,0.06); /* deeper */
 }
 
 /* Base */
@@ -47,7 +47,7 @@ body{
 }
 
 /* Brand block */
-.brand-logo{ height:44px; width:auto; display:block; }
+.brand-logo{ height:44px; width:auto; display:block; border:1px solid var(--brand-line); border-radius:8px; background:#ECE5DE; }
 .brand-title{
   font-family: "Playfair Display", Georgia, "Times New Roman", serif;
   font-weight: 700;
@@ -57,9 +57,12 @@ body{
   letter-spacing: 0.2px;
 }
 .brand-subtitle{
-  font-size: 13px;
+  font-size: 16px;               /* bumped to align visually with title width */
+  font-weight: 600;
   color: var(--brand-muted);
   margin-top: 2px;
+  line-height: 1.1;
+  letter-spacing: 0.1px;
 }
 
 /* Palette hooks */
@@ -78,7 +81,7 @@ body{
 .kpi-card{
   background:var(--brand-card);
   border:1px solid var(--brand-line);
-  border-radius:var(--radius-lg);
+  border-radius:var(--radius-lg);         /* rounder */
   box-shadow: var(--shadow-sm);
 }
 .kpi-card:hover{ box-shadow: var(--shadow-md); }
@@ -188,3 +191,4 @@ h1{ font-weight:600; } h2{ font-weight:600; }
 .p-4{ padding:1rem; } .py-12{ padding-top:3rem; padding-bottom:3rem; }
 .rounded-lg{ border-radius: var(--radius-lg); }
 .hover\:shadow-brand-md:hover{ box-shadow: var(--shadow-md); }
+
