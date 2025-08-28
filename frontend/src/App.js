@@ -390,6 +390,7 @@ const Dashboard = () => {
     console.log("[Cloud Cost Guard] Fetch:", url);
     const { data } = await axios.get(url);
     return data;
+    // NOTE: Axios throws for non-2xx and this catch happens in the outer try/catch.
   };
 
   useEffect(() => {
@@ -399,17 +400,21 @@ const Dashboard = () => {
 
     (async () => {
       try {
-        const [sum, fnd] = await Promise.all([
+        // Fetch summary, findings, movers (products are already in summary.top_products)
+        const [sum, fnd, mvRaw] = await Promise.all([
           getJSON(`/summary?window=${dateRange}`),
-          getJSON(`/findings?sort=savings&limit=200`)
+          getJSON(`/findings?sort=savings&limit=200`),
+          getJSON(`/movers?window=${dateRange}`),
         ]);
 
         if (!alive) return;
 
+        // Summary + Findings
         const newSummary = sum?.kpis ? sum : EMPTY_SUMMARY;
         setSummary(newSummary);
         setFindings(Array.isArray(fnd) ? fnd : []);
 
+        // Service breakdown from summary.top_products
         const products = Array.isArray(newSummary.top_products) ? newSummary.top_products : [];
         const total = products.reduce((acc, p) => acc + Number(p.amount_usd || p.amount || 0), 0);
         const palette = ["#8B6F47","#B5905C","#D8C3A5","#A8A7A7","#E98074","#C0B283","#F4E1D2","#E6B89C"];
@@ -421,6 +426,7 @@ const Dashboard = () => {
         }));
         setServiceBreakdown({ data: breakdown, total });
 
+        // Simple synthetic daily series from total (keeps your nice visuals)
         const days = dateRange === "7d" ? 7 : (dateRange === "30d" ? 30 : 90);
         const avg = total && days ? total / days : (newSummary.kpis.total_30d_cost || 0) / Math.max(days,1);
         const series = Array.from({ length: days }, (_, i) => {
@@ -431,6 +437,7 @@ const Dashboard = () => {
         });
         setCostTrend(series);
 
+        // Key insights
         const highest = series.reduce((m, pt) => (pt.cost > m.amount ? { date: pt.formatted_date, amount: pt.cost } : m), { date: "-", amount: 0 });
         const projected = series.reduce((sum, pt) => sum + pt.cost, 0);
         setKeyInsights({
@@ -441,7 +448,32 @@ const Dashboard = () => {
           budget_variance: total ? projected - total * 1.1 : 0,
         });
 
-        setTopMovers([]);
+        // --------- NEW: map /api/movers -> TopMoversCard shape ---------
+        const mv = Array.isArray(mvRaw) ? mvRaw : [];
+        const mappedMovers = mv.map((m) => {
+          const prev = Number(m.prev_usd ?? m.previous_cost ?? 0);
+          const curr = Number(m.current_usd ?? m.current_cost ?? m.amount_usd ?? 0);
+          const changeAmt = Number(
+            (m.change_usd ?? m.delta_usd ?? (curr - prev)).toFixed
+              ? (m.change_usd ?? m.delta_usd ?? (curr - prev)).toFixed(2)
+              : (curr - prev).toFixed(2)
+          );
+          const rawPct =
+            m.change_pct ?? m.delta_pct ??
+            (prev > 0 ? ((curr - prev) / prev) * 100 : (curr > 0 ? 100 : 0));
+          const changePct = Math.round(Number(rawPct || 0) * 10) / 10;
+
+          return {
+            service: m.service || m.name || "—",
+            previous_cost: prev,
+            current_cost: curr,
+            change_amount: changeAmt,
+            change_percent: changePct
+          };
+        });
+        setTopMovers(mappedMovers);
+        // ---------------------------------------------------------------
+
       } catch (e) {
         console.error("Load error:", e?.message || e, e?.response?.status, e?.config?.url);
         if (alive) setError("Failed to load cost data from backend.");
