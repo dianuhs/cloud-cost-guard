@@ -1,10 +1,10 @@
-
 import React, { useEffect, useState } from "react";
 import "./App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import axios from "axios";
+import { format } from "date-fns";
 
-// Add your logo import (uses the PNG in your repo)
+// Local brand icon
 import logo from "./assets/cloud-and-capital-icon.png";
 
 // Recharts
@@ -19,8 +19,6 @@ import {
   PieChart,
   Pie,
   Cell,
-  BarChart,
-  Bar
 } from "recharts";
 
 // UI
@@ -35,43 +33,44 @@ import { Separator } from "./components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./components/ui/select";
 
 // Icons
-import { 
-  DollarSign, 
-  TrendingUp, 
-  TrendingDown, 
-  AlertTriangle, 
-  Server, 
-  HardDrive, 
+import {
+  DollarSign,
+  TrendingUp,
+  TrendingDown,
+  AlertTriangle,
+  Server,
+  HardDrive,
   Eye,
   Download,
   BarChart3,
   Activity,
-  CheckCircle,
-  XCircle,
-  Calendar,
   Target,
   PieChart as PieChartIcon,
-  TrendingUpIcon
+  TrendingUp as TrendingUpIcon,
+  Calendar,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-// Utils
+/* ---------------- Utils ---------------- */
 const formatCurrency = (amount) =>
-  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 })
     .format(Number(amount || 0));
 
 const formatPercent = (percent) => {
   const p = Number(percent || 0);
-  const sign = p >= 0 ? '+' : '';
+  const sign = p >= 0 ? "+" : "";
   return `${sign}${p.toFixed(1)}%`;
 };
 
-const formatTimestampUS = (timestamp) => {
-  if (!timestamp) return '-';
-  const d = new Date(timestamp);
-  if (isNaN(d.getTime())) return '-';
+/* US date (MM/DD/YYYY hh:mm am/pm) in blue “Last Updated” banner */
+const formatTimestamp = (ts) => {
+  if (!ts) return "-";
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return "-";
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   const yyyy = d.getFullYear();
@@ -83,84 +82,83 @@ const formatTimestampUS = (timestamp) => {
   return `${mm}/${dd}/${yyyy} ${hh}:${min} ${ampm}`;
 };
 
-const getConfidenceColor = (confidence) => {
-  const colors = {
-    very_high: 'text-green-700 bg-green-50',
-    high: 'text-green-600 bg-green-50',
-    medium: 'text-yellow-600 bg-yellow-50',
-    low: 'text-red-600 bg-red-50',
-  };
-  return colors[String(confidence || '').toLowerCase()] || colors.medium;
-};
+const getConfidenceColor = (confidence) => ({
+  very_high: "text-green-700 bg-green-50",
+  high: "text-green-600 bg-green-50",
+  medium: "text-yellow-600 bg-yellow-50",
+  low: "text-red-600 bg-red-50",
+}[String(confidence || "").toLowerCase()] || "text-yellow-600 bg-yellow-50");
 
-const getRiskColor = (risk) => {
-  const colors = { Low: 'text-green-700', Medium: 'text-yellow-600', High: 'text-red-600' };
-  return colors[risk] || colors.Medium;
-};
+const getRiskColor = (risk) => ({
+  Low: "text-green-700",
+  Medium: "text-yellow-600",
+  High: "text-red-600",
+}[risk] || "text-yellow-600");
 
-const getSeverityColor = (severity) => {
-  const colors = { critical: 'severity-critical', high: 'severity-high', medium: 'severity-medium', low: 'severity-low' };
-  return colors[severity] || colors.medium;
-};
+const getSeverityColor = (severity) => ({
+  critical: "severity-critical",
+  high: "severity-high",
+  medium: "severity-medium",
+  low: "severity-low",
+}[String(severity || "").toLowerCase()] || "severity-medium");
 
 const getSeverityIcon = (severity) => {
-  switch(severity) {
-    case 'critical': return <XCircle className="h-4 w-4 text-brand-error" />;
-    case 'high': return <AlertTriangle className="h-4 w-4" style={{ color: '#B5905C' }} />;
-    case 'medium': return <AlertTriangle className="h-4 w-4 text-brand-warning" />;
-    case 'low': return <CheckCircle className="h-4 w-4 text-brand-success" />;
-    default: return <AlertTriangle className="h-4 w-4" />;
-  }
+  const s = String(severity || "").toLowerCase();
+  if (s === "critical") return <XCircle className="h-4 w-4 text-brand-error" />;
+  if (s === "high") return <AlertTriangle className="h-4 w-4" style={{ color: "#B5905C" }} />;
+  if (s === "medium") return <AlertTriangle className="h-4 w-4 text-brand-warning" />;
+  if (s === "low") return <CheckCircle className="h-4 w-4 text-brand-success" />;
+  return <AlertTriangle className="h-4 w-4" />;
 };
 
-// Components
+/* ---------- Cards & Charts (defined BEFORE use to avoid hoisting issues) ---------- */
+
 const KPICard = ({ title, value, change, icon: Icon, subtitle, dataFreshness }) => (
   <Card className="kpi-card hover:shadow-brand-md transition-all duration-200">
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
       <CardTitle className="text-sm font-medium text-brand-muted">{title}</CardTitle>
       <div className="flex flex-col items-end">
         <Icon className="h-4 w-4 text-brand-light-muted" />
-        {dataFreshness !== undefined && dataFreshness < 1 && <span className="text-xs text-green-600 mt-1">LIVE</span>}
-        {dataFreshness >= 1 && <span className="text-xs text-brand-light-muted mt-1">{dataFreshness}h</span>}
+        {Number.isFinite(dataFreshness) && dataFreshness < 1 && <span className="text-xs text-green-600 mt-1">LIVE</span>}
+        {Number.isFinite(dataFreshness) && dataFreshness >= 1 && <span className="text-xs text-brand-light-muted mt-1">{dataFreshness}h</span>}
       </div>
     </CardHeader>
     <CardContent>
-      {/* Bump KPI number to match your PDF feel */}
-      <div className="text-3xl font-extrabold text-brand-ink">{value}</div>
-      {change !== undefined && (
+      <div className="text-2xl font-bold text-brand-ink">{value}</div>
+      {Number.isFinite(change) ? (
         <p className="text-xs text-brand-muted flex items-center gap-1 mt-1">
           {change >= 0 ? <TrendingUp className="h-3 w-3 text-brand-success" /> : <TrendingDown className="h-3 w-3 text-brand-error" />}
-          <span className={change >= 0 ? 'text-brand-success' : 'text-brand-error'}>{formatPercent(change)}</span>
+          <span className={change >= 0 ? "text-brand-success" : "text-brand-error"}>{formatPercent(change)}</span>
           {subtitle}
         </p>
+      ) : (
+        subtitle && <p className="text-xs text-brand-muted mt-1">{subtitle}</p>
       )}
-      {subtitle && change === undefined && <p className="text-xs text-brand-muted mt-1">{subtitle}</p>}
     </CardContent>
   </Card>
 );
 
-const CostTrendChart = ({ data, height = 300 }) => (
+const CostTrendChart = ({ data, height = 300, label = "Cost trends over the last 30 days" }) => (
   <Card className="kpi-card">
     <CardHeader>
       <CardTitle className="flex items-center gap-2 text-brand-ink">
-        <BarChart3 className="h-5 w-5" />
-        Daily Spend Trend
+        <BarChart3 className="h-5 w-5" />Daily Spend Trend
       </CardTitle>
-      <CardDescription className="text-brand-muted">Cost trends over the last 30 days</CardDescription>
+      <CardDescription className="text-brand-muted">{label}</CardDescription>
     </CardHeader>
     <CardContent>
-      <div style={{ width: '100%', height }}>
+      <div style={{ width: "100%", height }}>
         <ResponsiveContainer>
           <LineChart data={data}>
             <CartesianGrid strokeDasharray="3 3" stroke="#E9E3DE" />
-            <XAxis dataKey="formatted_date" stroke="#7A6B5D" fontSize={12} tick={{ fill: '#7A6B5D' }} />
-            <YAxis stroke="#7A6B5D" fontSize={12} tick={{ fill: '#7A6B5D' }} tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`} />
+            <XAxis dataKey="formatted_date" stroke="#7A6B5D" fontSize={12} tick={{ fill: "#7A6B5D" }} />
+            <YAxis stroke="#7A6B5D" fontSize={12} tick={{ fill: "#7A6B5D" }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
             <Tooltip
-              contentStyle={{ backgroundColor: '#FFFFFF', border: '1px solid #E9E3DE', borderRadius: 8, color: '#0A0A0A' }}
-              formatter={(value) => [formatCurrency(value), 'Daily Cost']}
+              contentStyle={{ backgroundColor: "#FFF", border: "1px solid #E9E3DE", borderRadius: 8, color: "#0A0A0A" }}
+              formatter={(value) => [formatCurrency(value), "Daily Cost"]}
               labelFormatter={(label) => `Date: ${label}`}
             />
-            <Line type="monotone" dataKey="cost" stroke="#8B6F47" strokeWidth={3} dot={{ fill: '#8B6F47', r: 4 }} activeDot={{ r: 6, fill: '#8B6F47' }} />
+            <Line type="monotone" dataKey="cost" stroke="#8B6F47" strokeWidth={3} dot={{ fill: "#8B6F47", r: 4 }} activeDot={{ r: 6, fill: "#8B6F47" }} />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -168,40 +166,39 @@ const CostTrendChart = ({ data, height = 300 }) => (
   </Card>
 );
 
-const ServiceBreakdownChart = ({ data, total }) => (
+const ServiceBreakdownChart = ({ data }) => (
   <Card className="kpi-card">
     <CardHeader>
       <CardTitle className="flex items-center gap-2 text-brand-ink">
-        <PieChartIcon className="h-5 w-5" />
-        Cost by Service
+        <PieChartIcon className="h-5 w-5" />Cost by Service
       </CardTitle>
       <CardDescription className="text-brand-muted">Top services by cost breakdown</CardDescription>
     </CardHeader>
     <CardContent>
       <div className="flex items-center justify-between">
-        <div style={{ width: '60%', height: 300 }}>
+        <div style={{ width: "60%", height: 300 }}>
           <ResponsiveContainer>
             <PieChart>
               <Pie data={data} cx="50%" cy="50%" innerRadius={60} outerRadius={120} paddingAngle={2} dataKey="value">
-                {data.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.fill} />)}
+                {data.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
               </Pie>
               <Tooltip
-                contentStyle={{ backgroundColor: '#FFFFFF', border: '1px solid #E9E3DE', borderRadius: 8, color: '#0A0A0A' }}
-                formatter={(value, name, props) => [formatCurrency(value), `${props.payload.name} (${props.payload.percentage}%)`]}
+                contentStyle={{ backgroundColor: "#FFF", border: "1px solid #E9E3DE", borderRadius: 8, color: "#0A0A0A" }}
+                formatter={(val, _name, props) => [formatCurrency(val), `${props.payload.name} (${props.payload.percentage}%)`]}
               />
             </PieChart>
           </ResponsiveContainer>
         </div>
         <div className="w-2/5 space-y-2">
-          {data.slice(0, 6).map((service, index) => (
-            <div key={index} className="flex items-center justify-between text-sm">
+          {data.slice(0, 6).map((s, i) => (
+            <div key={i} className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: service.fill }}></div>
-                <span className="text-brand-ink">{service.name}</span>
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: s.fill }} />
+                <span className="text-brand-ink">{s.name}</span>
               </div>
               <div className="text-right">
-                <div className="font-semibold text-brand-ink">{formatCurrency(service.value)}</div>
-                <div className="text-xs text-brand-muted">{service.percentage}%</div>
+                <div className="font-semibold text-brand-ink">{formatCurrency(s.value)}</div>
+                <div className="text-xs text-brand-muted">{s.percentage}%</div>
               </div>
             </div>
           ))}
@@ -211,34 +208,32 @@ const ServiceBreakdownChart = ({ data, total }) => (
   </Card>
 );
 
-const TopMoversCard = ({ movers }) => (
+const TopMoversCard = ({ movers, windowLabel = "7d" }) => (
   <Card className="kpi-card">
     <CardHeader>
       <CardTitle className="flex items-center gap-2 text-brand-ink">
         <TrendingUpIcon className="h-5 w-5" />
-        Top Movers (7d)
+        Top Movers ({windowLabel})
       </CardTitle>
-      <CardDescription className="text-brand-muted">Biggest cost changes in the last week</CardDescription>
+      <CardDescription className="text-brand-muted">Biggest cost changes in the selected window</CardDescription>
     </CardHeader>
     <CardContent>
       <div className="space-y-3">
-        {movers.slice(0, 6).map((mover, index) => (
-          <div key={index} className="flex items-center justify-between p-2 rounded-lg bg-brand-bg/30">
+        {movers.slice(0, 6).map((m, i) => (
+          <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-brand-bg/30">
             <div className="flex items-center gap-3">
-              <div className={`w-2 h-8 rounded ${mover.change_amount >= 0 ? 'bg-red-500' : 'bg-green-500'}`}></div>
+              <div className={`w-2 h-8 rounded ${m.change_amount >= 0 ? "bg-red-500" : "bg-green-500"}`} />
               <div>
-                <div className="font-medium text-brand-ink text-sm">{mover.service}</div>
-                <div className="text-xs text-brand-muted">
-                  {formatCurrency(mover.previous_cost)} → {formatCurrency(mover.current_cost)}
-                </div>
+                <div className="font-medium text-brand-ink text-sm">{m.service}</div>
+                <div className="text-xs text-brand-muted">{formatCurrency(m.previous_cost)} → {formatCurrency(m.current_cost)}</div>
               </div>
             </div>
             <div className="text-right">
-              <div className={`font-semibold text-sm ${mover.change_amount >= 0 ? 'text-red-600' : 'text-green-600'}`}>
-                {mover.change_amount >= 0 ? '+' : ''}{formatCurrency(mover.change_amount)}
+              <div className={`font-semibold text-sm ${m.change_amount >= 0 ? "text-red-600" : "text-green-600"}`}>
+                {m.change_amount >= 0 ? "+" : ""}{formatCurrency(m.change_amount)}
               </div>
-              <div className={`text-xs ${mover.change_amount >= 0 ? 'text-red-500' : 'text-green-500'}`}>
-                {mover.change_percent >= 0 ? '+' : ''}{mover.change_percent}%
+              <div className={`text-xs ${m.change_amount >= 0 ? "text-red-500" : "text-green-500"}`}>
+                {m.change_percent >= 0 ? "+" : ""}{m.change_percent}%
               </div>
             </div>
           </div>
@@ -251,47 +246,98 @@ const TopMoversCard = ({ movers }) => (
 const KeyInsightsCard = ({ insights }) => (
   <Card className="kpi-card">
     <CardHeader>
-      <CardTitle className="flex items-center gap-2 text-brand-ink">
-        <Target className="h-5 w-5" />
-        Key Insights
-      </CardTitle>
+      <CardTitle className="flex items-center gap-2 text-brand-ink"><Target className="h-5 w-5" />Key Insights</CardTitle>
       <CardDescription className="text-brand-muted">Important findings and projections</CardDescription>
     </CardHeader>
     <CardContent>
       <div className="space-y-4">
         <div>
           <div className="text-sm text-brand-muted">Highest Single Day</div>
-          <div className="font-semibold text-brand-ink">{insights.highest_single_day?.date}</div>
-          <div className="text-lg font-bold text-brand-accent">{formatCurrency(insights.highest_single_day?.amount || 0)}</div>
+          <div className="font-semibold text-brand-ink">{insights?.highest_single_day?.date || "-"}</div>
+          <div className="text-lg font-bold text-brand-accent">{formatCurrency(insights?.highest_single_day?.amount || 0)}</div>
         </div>
-        
         <Separator />
-        
         <div>
           <div className="text-sm text-brand-muted">Projected Month-End</div>
-          <div className="text-lg font-bold text-brand-ink">{formatCurrency(insights.projected_month_end || 0)}</div>
+          <div className="text-lg font-bold text-brand-ink">{formatCurrency(insights?.projected_month_end || 0)}</div>
           <div className="text-xs text-brand-muted">Based on current trend</div>
         </div>
-        
         <Separator />
-        
         <div>
           <div className="text-sm text-brand-muted">Budget Performance</div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm">MTD: {formatCurrency(insights.mtd_actual || 0)}</span>
-            <span className="text-sm">Budget: {formatCurrency(insights.monthly_budget || 0)}</span>
+            <span className="text-sm">MTD: {formatCurrency(insights?.mtd_actual || 0)}</span>
+            <span className="text-sm">Budget: {formatCurrency(insights?.monthly_budget || 0)}</span>
           </div>
-          <Progress 
-            value={Math.min(((insights.mtd_actual || 0) / (insights.monthly_budget || 1)) * 100, 100)} 
-            className="h-3"
-          />
+          <Progress value={Math.min(((insights?.mtd_actual || 0) / (insights?.monthly_budget || 1)) * 100, 100)} className="h-3" />
           <div className="flex justify-between text-xs mt-2">
-            <span className="text-brand-muted">Projected: {formatCurrency(insights.projected_month_end || 0)}</span>
-            <span className={`font-semibold ${Number(insights.budget_variance || 0) >= 0 ? 'text-red-600' : 'text-green-600'}`}>
-              {Number(insights.budget_variance || 0) >= 0 ? '+' : ''}{formatCurrency(insights.budget_variance || 0)} vs budget
+            <span className="text-brand-muted">Projected: {formatCurrency(insights?.projected_month_end || 0)}</span>
+            <span className={`font-semibold ${Number(insights?.budget_variance || 0) >= 0 ? "text-red-600" : "text-green-600"}`}>
+              {Number(insights?.budget_variance || 0) >= 0 ? "+" : ""}{formatCurrency(insights?.budget_variance || 0)} vs budget
             </span>
           </div>
         </div>
+      </div>
+    </CardContent>
+  </Card>
+);
+
+const FindingCard = ({ finding, onViewDetails }) => (
+  <Card className="finding-card">
+    <CardHeader className="pb-3">
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-2">
+          {getSeverityIcon(finding.severity)}
+          <CardTitle className="text-sm font-medium text-brand-ink">{finding.title}</CardTitle>
+        </div>
+        <div className="flex flex-col gap-1">
+          <Badge className={getSeverityColor(finding.severity) + " px-2 py-1 text-xs font-medium rounded-md"}>
+            {String(finding.severity || "").toUpperCase()}
+          </Badge>
+          {finding.confidence && (
+            <Badge className={getConfidenceColor(finding.confidence) + " px-2 py-1 text-xs rounded-md"}>
+              {String(finding.confidence).replace("_", " ").toUpperCase()} CONF
+            </Badge>
+          )}
+        </div>
+      </div>
+    </CardHeader>
+    <CardContent>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-brand-muted">Monthly Savings</span>
+          <span className="text-lg font-semibold text-brand-success">{formatCurrency(finding.monthly_savings_usd_est)}</span>
+        </div>
+
+        {finding.evidence && (finding.evidence.resource_id || finding.evidence.region || finding.evidence.instance_type) && (
+          <div className="text-xs bg-brand-bg/30 p-2 rounded border border-brand-line">
+            {finding.evidence.resource_id && <div className="font-mono text-brand-muted">Resource: {finding.evidence.resource_id}</div>}
+            {finding.evidence.region && <div className="text-brand-muted">Region: {finding.evidence.region}</div>}
+            {finding.evidence.instance_type && <div className="text-brand-muted">Type: {finding.evidence.instance_type}</div>}
+          </div>
+        )}
+
+        <div className="flex justify-between text-xs">
+          <span className="text-brand-muted">Risk: <span className={getRiskColor(finding.risk_level)}>{finding.risk_level}</span></span>
+          {finding.implementation_time && <span className="text-brand-muted">Time: {finding.implementation_time}</span>}
+        </div>
+
+        {finding.suggested_action && <p className="text-sm text-brand-ink">{finding.suggested_action}</p>}
+
+        {finding.commands && finding.commands.length > 0 && (
+          <div className="bg-brand-bg p-3 rounded-lg border border-brand-line">
+            <code className="text-xs font-mono text-brand-ink">{finding.commands[0]}</code>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between text-xs text-brand-muted">
+          {finding.last_analyzed && <span>Analyzed: {formatTimestamp(finding.last_analyzed)}</span>}
+        </div>
+
+        <Button variant="outline" size="sm" onClick={() => onViewDetails(finding)} className="w-full btn-brand-outline">
+          <Eye className="h-3 w-3 mr-1" />
+          View Details & Methodology
+        </Button>
       </div>
     </CardContent>
   </Card>
@@ -309,19 +355,17 @@ const ProductTable = ({ products }) => (
         </TableRow>
       </TableHeader>
       <TableBody>
-        {products.map((product, index) => (
-          <TableRow key={index} className="hover:bg-brand-bg/30">
-            <TableCell className="font-medium text-brand-ink">{product.product}</TableCell>
-            <TableCell className="text-right text-brand-ink">{formatCurrency(product.amount_usd)}</TableCell>
+        {products.map((p, i) => (
+          <TableRow key={i} className="hover:bg-brand-bg/30">
+            <TableCell className="font-medium text-brand-ink">{p.product}</TableCell>
+            <TableCell className="text-right text-brand-ink">{formatCurrency(p.amount_usd)}</TableCell>
             <TableCell className="text-right">
-              <div className={`flex items-center justify-end gap-1 ${
-                product.wow_delta >= 0 ? 'text-brand-error' : 'text-brand-success'
-              }`}>
-                {product.wow_delta >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                {formatCurrency(Math.abs(product.wow_delta))}
+              <div className={`flex items-center justify-end gap-1 ${Number(p.wow_delta || 0) >= 0 ? "text-brand-error" : "text-brand-success"}`}>
+                {Number(p.wow_delta || 0) >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                {formatCurrency(Math.abs(Number(p.wow_delta || 0)))}
               </div>
             </TableCell>
-            <TableCell className="text-right text-brand-ink">{product.percent_of_total.toFixed(1)}%</TableCell>
+            <TableCell className="text-right text-brand-ink">{Number(p.percent_of_total || 0).toFixed(1)}%</TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -329,7 +373,7 @@ const ProductTable = ({ products }) => (
   </div>
 );
 
-// Main Dashboard
+/* ---------------- Main Dashboard ---------------- */
 const Dashboard = () => {
   const [summary, setSummary] = useState(null);
   const [findings, setFindings] = useState([]);
@@ -339,7 +383,7 @@ const Dashboard = () => {
   const [keyInsights, setKeyInsights] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [dateRange, setDateRange] = useState('30d');
+  const [dateRange, setDateRange] = useState("30d");
 
   useEffect(() => {
     loadAllData();
@@ -351,15 +395,15 @@ const Dashboard = () => {
       setLoading(true);
       setError(null);
 
-      const days = dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90;
+      const days = dateRange === "7d" ? 7 : dateRange === "90d" ? 90 : 30;
 
       const [
-        summaryResponse,
-        findingsResponse,
-        costTrendResponse,
-        serviceBreakdownResponse,
-        topMoversResponse,
-        keyInsightsResponse
+        summaryRes,
+        findingsRes,
+        trendRes,
+        svcRes,
+        moversRes,
+        insightsRes
       ] = await Promise.all([
         axios.get(`${API}/summary?window=${dateRange}`),
         axios.get(`${API}/findings?sort=savings&limit=50`),
@@ -369,64 +413,60 @@ const Dashboard = () => {
         axios.get(`${API}/key-insights?window=${dateRange}`)
       ]);
 
-      setSummary(summaryResponse.data);
-      setFindings(findingsResponse.data);
-
-      // Normalize trend labels to MM/DD and dampen "flowy" artifacts if backend is noisy
-      {
-        const raw = Array.isArray(costTrendResponse.data) ? costTrendResponse.data : [];
-        const trend = raw.map((pt, i) => {
-          const ts = pt.date || pt.formatted_date || pt.day || pt.ts;
-          const d = ts ? new Date(ts) : new Date(Date.now() - (raw.length - 1 - i) * 86400000);
-          const mm = String(d.getMonth() + 1).padStart(2, "0");
-          const dd = String(d.getDate()).padStart(2, "0");
-          // Optional: light smoothing (average with neighbors) to avoid fake-looking wiggles
-          const val = Number(pt.cost || pt.value || 0);
-          return { formatted_date: `${mm}/${dd}`, cost: isFinite(val) ? val : 0 };
-        });
-
-        // simple 3-pt moving average (no edges) to reduce “flowy” sine look
-        const smoothed = trend.map((p, i, arr) => {
-          if (i === 0 || i === arr.length - 1) return p;
-          const avg = (arr[i-1].cost + p.cost + arr[i+1].cost) / 3;
-          return { ...p, cost: Number(avg.toFixed(2)) };
-        });
-
-        setCostTrend(smoothed);
-      }
-
-      // Service breakdown (keep yours)
-      setServiceBreakdown(serviceBreakdownResponse.data);
-      setTopMovers(topMoversResponse.data);
-      setKeyInsights(keyInsightsResponse.data);
+      setSummary(summaryRes.data || {});
+      setFindings(Array.isArray(findingsRes.data) ? findingsRes.data : []);
+      setCostTrend(Array.isArray(trendRes.data) ? normalizeTrend(trendRes.data) : []);
+      setServiceBreakdown(svcRes.data || { data: [], total: 0 });
+      setTopMovers(Array.isArray(moversRes.data) ? moversRes.data : []);
+      setKeyInsights(insightsRes.data || {});
 
     } catch (err) {
-      console.error('Error loading data:', err);
-      setError('Failed to load cost data. Please try again.');
+      console.error("Error loading data:", err);
+      setError("Failed to load cost data. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
+  const normalizeTrend = (arr) =>
+    arr.map((p) => ({
+      // Ensure MM/DD labels for ticks and tooltip
+      formatted_date: safeMMDD(p.date || p.formatted_date),
+      cost: Number(p.cost || p.amount || 0)
+    }));
+
+  const safeMMDD = (isoOrLabel) => {
+    try {
+      const d = new Date(isoOrLabel);
+      if (!isNaN(d.getTime())) return format(d, "MM/dd");
+    } catch {}
+    // Fallback: if already like 8/26 or 08/26, normalize to MM/DD
+    const m = String(isoOrLabel || "").match(/^(\d{1,2})[\/\-](\d{1,2})/);
+    if (m) return `${m[1].padStart(2, "0")}/${m[2].padStart(2, "0")}`;
+    return String(isoOrLabel || "");
+  };
+
   const handleViewDetails = (finding) => {
     const evidence = JSON.stringify(finding.evidence, null, 2);
-    const assumptions = finding.assumptions ? finding.assumptions.join('\n• ') : 'None specified';
+    const assumptions = Array.isArray(finding.assumptions) && finding.assumptions.length
+      ? finding.assumptions.join("\n• ")
+      : "None specified";
     const details = `
 FINDING DETAILS
 ==============
 Title: ${finding.title}
-Severity: ${finding.severity?.toUpperCase()} | Confidence: ${finding.confidence?.replace('_', ' ').toUpperCase()}
+Severity: ${String(finding.severity || "").toUpperCase()} | Confidence: ${String(finding.confidence || "").replace("_"," ").toUpperCase()}
 Monthly Savings: ${formatCurrency(finding.monthly_savings_usd_est)}
 
 IMPLEMENTATION
 =============
 Risk Level: ${finding.risk_level}
 Estimated Time: ${finding.implementation_time}
-Last Analyzed: ${formatTimestampUS(finding.last_analyzed)}
+Last Analyzed: ${formatTimestamp(finding.last_analyzed)}
 
 METHODOLOGY
 ===========
-${finding.methodology || 'Standard cost optimization analysis'}
+${finding.methodology || "Standard cost optimization analysis"}
 
 EVIDENCE
 ========
@@ -438,36 +478,34 @@ ASSUMPTIONS
 
 RECOMMENDED COMMANDS
 ===================
-${finding.commands ? finding.commands.join('\n') : 'No specific commands provided'}
+${Array.isArray(finding.commands) ? finding.commands.join("\n") : "No specific commands provided"}
 
 ACTION REQUIRED
 ===============
 ${finding.suggested_action}
-    `;
+`.trim();
     alert(details);
   };
 
   const exportCSV = async () => {
     try {
-      const response = await axios.get(`${API}/findings?sort=savings&limit=1000`);
-      const rows = Array.isArray(response.data) ? response.data : [];
-      const headers = ['Title', 'Type', 'Severity', 'Monthly Savings', 'Resource ID', 'Action'];
-      const body = rows.map(f => [
-        f.title, f.type, f.severity, f.monthly_savings_usd_est, f.resource_id || '', f.suggested_action
+      const { data } = await axios.get(`${API}/findings?sort=savings&limit=1000`);
+      const arr = Array.isArray(data) ? data : [];
+      const headers = ["Title", "Type", "Severity", "Monthly Savings", "Resource ID", "Action"];
+      const rows = arr.map((f) => [
+        f.title, f.type, f.severity, f.monthly_savings_usd_est, f.resource_id || "", f.suggested_action
       ]);
-      const csv = [headers, ...body]
-        .map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))
-        .join('\n');
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const csv = [headers, ...rows].map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
       a.href = url;
-      a.download = 'cost-findings.csv';
+      a.download = "cost-findings.csv";
       a.click();
-      window.URL.revokeObjectURL(url);
+      URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Export failed:', err);
-      alert('Export failed. Please try again.');
+      console.error("Export failed:", err);
+      alert("Export failed. Please try again.");
     }
   };
 
@@ -493,7 +531,11 @@ ${finding.suggested_action}
     );
   }
 
-  const { kpis, top_products, recent_findings } = summary;
+  const { kpis = {}, top_products = [], recent_findings = [] } = summary || {};
+  const trendLabel =
+    dateRange === "30d" ? "Cost trends over the last 30 days" :
+    dateRange === "7d"  ? "Cost trends over the last 7 days"  :
+                          "Cost trends over the last 90 days";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand-bg to-brand-light">
@@ -502,16 +544,16 @@ ${finding.suggested_action}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {/* Use your local PNG + brand sizing */}
               <img src={logo} alt="Cloud & Capital" className="brand-logo" />
               <div className="leading-tight">
                 <h1 className="brand-title">Cloud Cost Guard</h1>
-                <p className="brand-subtitle">Multi-cloud cost optimization</p>
+                <p className="text-[15px] text-brand-muted">Multi-cloud cost optimization</p>
               </div>
             </div>
+
             <div className="flex items-center gap-2">
               <Select value={dateRange} onValueChange={setDateRange}>
-                <SelectTrigger className="w-32">
+                <SelectTrigger className="w-36">
                   <Calendar className="h-4 w-4 mr-2" />
                   <SelectValue />
                 </SelectTrigger>
@@ -534,35 +576,61 @@ ${finding.suggested_action}
         </div>
       </div>
 
+      {/* Body */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Data Source Notice */}
+        {/* Data Source banner with US blue timestamp */}
         <div className="mb-6">
           <Alert className="bg-blue-50 border-blue-200">
-            <Activity className="h-4 w-4 text-brand-ink" />
+            <Activity className="h-4 w-4 text-blue-600" />
             <AlertDescription className="text-blue-800">
-              <span className="font-medium">Data Source:</span> AWS Cost & Usage Reports • CloudWatch Metrics • Resource Inventory APIs
-              <span className="ml-4 text-blue-700">Last Updated: {formatTimestampUS(kpis.last_updated || summary.generated_at)}</span>
+              <span className="font-medium">Data Source:</span> AWS Cost &amp; Usage Reports • CloudWatch Metrics • Resource Inventory APIs
+              <span className="ml-4 text-blue-700">Last Updated: {formatTimestamp(kpis.last_updated || summary?.generated_at)}</span>
             </AlertDescription>
           </Alert>
         </div>
 
-        {/* KPI row */}
+        {/* KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <KPICard title="Total 30d Cost" value={formatCurrency(kpis.total_30d_cost)} change={kpis.wow_percent} icon={DollarSign} subtitle="vs last week" dataFreshness={kpis.data_freshness_hours} />
-          <KPICard title="Savings Ready" value={formatCurrency(kpis.savings_ready_usd)} icon={TrendingDown} subtitle="potential monthly savings" dataFreshness={kpis.data_freshness_hours} />
-          <KPICard title="Under-utilized" value={kpis.underutilized_count} icon={Server} subtitle="compute resources" dataFreshness={kpis.data_freshness_hours} />
-          <KPICard title="Orphaned Resources" value={kpis.orphans_count} icon={HardDrive} subtitle="unattached volumes" dataFreshness={kpis.data_freshness_hours} />
+          <KPICard
+            title={dateRange === "30d" ? "Total 30d Cost" : `Total ${dateRange} Cost`}
+            value={formatCurrency(kpis.total_30d_cost)}
+            change={kpis.wow_percent}
+            icon={DollarSign}
+            subtitle="vs last period"
+            dataFreshness={kpis.data_freshness_hours}
+          />
+          <KPICard
+            title="Savings Ready"
+            value={formatCurrency(kpis.savings_ready_usd)}
+            icon={TrendingDown}
+            subtitle="potential monthly savings"
+            dataFreshness={kpis.data_freshness_hours}
+          />
+          <KPICard
+            title="Under-utilized"
+            value={kpis.underutilized_count}
+            icon={Server}
+            subtitle="compute resources"
+            dataFreshness={kpis.data_freshness_hours}
+          />
+          <KPICard
+            title="Orphaned Resources"
+            value={kpis.orphans_count}
+            icon={HardDrive}
+            subtitle="unattached volumes"
+            dataFreshness={kpis.data_freshness_hours}
+          />
         </div>
 
-        {/* Charts row */}
+        {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <CostTrendChart data={costTrend} />
-          <ServiceBreakdownChart data={serviceBreakdown.data} total={serviceBreakdown.total} />
+          <CostTrendChart data={costTrend} label={trendLabel} />
+          <ServiceBreakdownChart data={Array.isArray(serviceBreakdown.data) ? serviceBreakdown.data : []} />
         </div>
 
-        {/* Insights row */}
+        {/* Movers & Insights */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <TopMoversCard movers={topMovers} />
+          <TopMoversCard movers={topMovers} windowLabel="7d" />
           <KeyInsightsCard insights={keyInsights} />
         </div>
 
@@ -574,6 +642,7 @@ ${finding.suggested_action}
             <TabsTrigger value="overview" className="tab-trigger">Overview</TabsTrigger>
           </TabsList>
 
+          {/* Findings */}
           <TabsContent value="findings" className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold text-brand-ink">Cost Optimization Findings</h2>
@@ -592,30 +661,32 @@ ${finding.suggested_action}
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {findings.map((finding) => (
-                  <FindingCard key={finding.finding_id} finding={finding} onViewDetails={handleViewDetails} />
+                {findings.map((f) => (
+                  <FindingCard key={f.finding_id || `${f.title}-${f.resource_id || ""}`} finding={f} onViewDetails={handleViewDetails} />
                 ))}
               </div>
             )}
           </TabsContent>
 
+          {/* Products */}
           <TabsContent value="products" className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold text-brand-ink">Product Cost Breakdown</h2>
-              <Badge className="badge-brand">Last {dateRange === '7d' ? '7' : dateRange === '30d' ? '30' : '90'} days</Badge>
+              <Badge className="badge-brand">Last {dateRange === "7d" ? "7" : dateRange === "30d" ? "30" : "90"} days</Badge>
             </div>
 
             <Card className="kpi-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-brand-ink"><BarChart3 className="h-5 w-5" />Top Products by Cost</CardTitle>
-                <CardDescription className="text-brand-muted">Your highest spending cloud products and their week-over-week changes</CardDescription>
+                <CardDescription className="text-brand-muted">Your highest spending products and week-over-week changes</CardDescription>
               </CardHeader>
               <CardContent>
-                <ProductTable products={top_products} />
+                <ProductTable products={Array.isArray(top_products) ? top_products : []} />
               </CardContent>
             </Card>
           </TabsContent>
 
+          {/* Overview */}
           <TabsContent value="overview" className="space-y-6">
             <h2 className="text-xl font-semibold text-brand-ink">Cost Overview</h2>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -626,16 +697,16 @@ ${finding.suggested_action}
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {[
-                    { type: 'Under-utilized', count: kpis.underutilized_count, color: 'bg-blue-500' },
-                    { type: 'Orphaned', count: kpis.orphans_count, color: 'bg-yellow-500' },
-                    { type: 'Idle', count: findings.filter(f => f.title && f.title.toLowerCase().includes('idle')).length, color: 'bg-red-500' }
-                  ].map((item, index) => (
-                    <div key={index} className="flex items-center justify-between">
+                    { type: "Under-utilized", count: kpis.underutilized_count, color: "bg-blue-500" },
+                    { type: "Orphaned", count: kpis.orphans_count, color: "bg-yellow-500" },
+                    { type: "Idle", count: Array.isArray(findings) ? findings.filter(f => String(f.title).toLowerCase().includes("idle")).length : 0, color: "bg-red-500" }
+                  ].map((it, i) => (
+                    <div key={i} className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className={`w-3 h-3 rounded-full ${item.color}`}></div>
-                        <span className="text-sm text-brand-ink">{item.type}</span>
+                        <div className={`w-3 h-3 rounded-full ${it.color}`} />
+                        <span className="text-sm text-brand-ink">{it.type}</span>
                       </div>
-                      <span className="text-sm font-medium text-brand-ink">{item.count}</span>
+                      <span className="text-sm font-medium text-brand-ink">{it.count}</span>
                     </div>
                   ))}
                 </CardContent>
@@ -648,7 +719,7 @@ ${finding.suggested_action}
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {(recent_findings || []).slice(0, 5).map((f, i) => (
+                    {(Array.isArray(recent_findings) ? recent_findings.slice(0, 5) : []).map((f, i) => (
                       <div key={i} className="flex items-center justify-between p-3 bg-brand-bg/50 rounded-lg border border-brand-line">
                         <div className="flex items-center gap-2">
                           {getSeverityIcon(f.severity)}
