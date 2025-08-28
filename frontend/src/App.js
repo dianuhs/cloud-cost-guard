@@ -1,18 +1,18 @@
+
 import React, { useEffect, useMemo, useState } from "react";
 import "./App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import axios from "axios";
 
-// If you have a PNG/SVG logo, import it here (or remove this <img/> later)
 import logo from "./assets/cloud-and-capital-icon.png";
 
-// Recharts
+/* Recharts */
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell
 } from "recharts";
 
-// UI
+/* UI */
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./components/ui/card";
 import { Button } from "./components/ui/button";
 import { Badge } from "./components/ui/badge";
@@ -23,17 +23,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Separator } from "./components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./components/ui/select";
 
-// Icons
+/* Icons */
 import {
   DollarSign, TrendingUp, TrendingDown, AlertTriangle, Server, HardDrive, Eye,
   Download, BarChart3, Target, PieChart as PieChartIcon, TrendingUp as TrendingUpIcon,
-  CheckCircle, XCircle
+  CheckCircle, XCircle, Activity
 } from "lucide-react";
 
-/* ---- FORCE calls to same-origin proxy ---- */
+/* Same-origin API via serverless proxy */
 const API = "/api";
 
-/* ---------- Utils, components, etc. (unchanged below) ---------- */
+/* ---------- Utils ---------- */
 const formatCurrency = (amount) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 })
     .format(Number(amount || 0));
@@ -44,11 +44,20 @@ const formatPercent = (percent) => {
   return `${sign}${p.toFixed(1)}%`;
 };
 
-const formatTimestamp = (timestamp) => {
+/* US date format MM/DD/YYYY hh:mm am/pm in blue text */
+const formatTimestampUS = (timestamp) => {
   if (!timestamp) return "-";
   const d = new Date(timestamp);
   if (isNaN(d.getTime())) return "-";
-  return d.toLocaleDateString() + " " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  let h = d.getHours();
+  const ampm = h >= 12 ? "pm" : "am";
+  h = h % 12; if (h === 0) h = 12;
+  const hh = String(h).padStart(2, "0");
+  const min = String(d.getMinutes()).padStart(2, "0");
+  return `${mm}/${dd}/${yyyy} ${hh}:${min} ${ampm}`;
 };
 
 const sevToConfidence = (severity) => {
@@ -106,6 +115,7 @@ const EMPTY_SUMMARY = {
   generated_at: new Date().toISOString(),
 };
 
+/* Reusable UI bits (unchanged except colors/fonts already in CSS) */
 const KPICard = ({ title, value, change, icon: Icon, subtitle, dataFreshness }) => (
   <Card className="kpi-card hover:shadow-brand-md transition-all duration-200">
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -191,11 +201,14 @@ const ServiceBreakdownChart = ({ data }) => (
   </Card>
 );
 
-const TopMoversCard = ({ movers }) => (
+const TopMoversCard = ({ movers, windowLabel = "7d" }) => (
   <Card className="kpi-card">
     <CardHeader>
-      <CardTitle className="flex items-center gap-2 text-brand-ink"><TrendingUpIcon className="h-5 w-5" />Top Movers (7d)</CardTitle>
-      <CardDescription className="text-brand-muted">Biggest cost changes in the last week</CardDescription>
+      <CardTitle className="flex items-center gap-2 text-brand-ink">
+        <TrendingUpIcon className="h-5 w-5" />
+        Top Movers ({windowLabel})
+      </CardTitle>
+      <CardDescription className="text-brand-muted">Biggest cost changes in the selected window</CardDescription>
     </CardHeader>
     <CardContent>
       <div className="space-y-3">
@@ -311,7 +324,7 @@ const FindingCard = ({ finding, onViewDetails }) => (
         )}
 
         <div className="flex items-center justify-between text-xs text-brand-muted">
-          {finding.last_analyzed && <span>Analyzed: {formatTimestamp(finding.last_analyzed)}</span>}
+          {finding.last_analyzed && <span>Analyzed: {formatTimestampUS(finding.last_analyzed)}</span>}
         </div>
 
         <Button variant="outline" size="sm" onClick={() => onViewDetails(finding)} className="w-full btn-brand-outline">
@@ -321,42 +334,6 @@ const FindingCard = ({ finding, onViewDetails }) => (
       </div>
     </CardContent>
   </Card>
-);
-
-const ProductTable = ({ products }) => (
-  <div className="table-brand rounded-lg">
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="text-brand-muted font-semibold">Product</TableHead>
-          <TableHead className="text-right text-brand-muted font-semibold">30d Cost</TableHead>
-          <TableHead className="text-right text-brand-muted font-semibold">WoW Change</TableHead>
-          <TableHead className="text-right text-brand-muted font-semibold">% of Total</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {products.map((p, i) => {
-          const label = p.product || p.name || p.service || "—";
-          const amount = Number(p.amount_usd || p.amount || 0);
-          const wow = Number(p.wow_delta || 0);
-          const pct = Number(p.percent_of_total || 0);
-          return (
-            <TableRow key={i} className="hover:bg-brand-bg/30">
-              <TableCell className="font-medium text-brand-ink">{label}</TableCell>
-              <TableCell className="text-right text-brand-ink">{formatCurrency(amount)}</TableCell>
-              <TableCell className="text-right">
-                <div className={`flex items-center justify-end gap-1 ${wow >= 0 ? "text-brand-error" : "text-brand-success"}`}>
-                  {wow >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                  {formatCurrency(Math.abs(wow))}
-                </div>
-              </TableCell>
-              <TableCell className="text-right text-brand-ink">{pct.toFixed(1)}%</TableCell>
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
-  </div>
 );
 
 /* ---------- Main ---------- */
@@ -390,7 +367,6 @@ const Dashboard = () => {
     console.log("[Cloud Cost Guard] Fetch:", url);
     const { data } = await axios.get(url);
     return data;
-    // NOTE: Axios throws for non-2xx and this catch happens in the outer try/catch.
   };
 
   useEffect(() => {
@@ -400,7 +376,6 @@ const Dashboard = () => {
 
     (async () => {
       try {
-        // Fetch summary, findings, movers (products are already in summary.top_products)
         const [sum, fnd, mvRaw] = await Promise.all([
           getJSON(`/summary?window=${dateRange}`),
           getJSON(`/findings?sort=savings&limit=200`),
@@ -409,12 +384,11 @@ const Dashboard = () => {
 
         if (!alive) return;
 
-        // Summary + Findings
         const newSummary = sum?.kpis ? sum : EMPTY_SUMMARY;
         setSummary(newSummary);
         setFindings(Array.isArray(fnd) ? fnd : []);
 
-        // Service breakdown from summary.top_products
+        /* Service breakdown from summary.top_products */
         const products = Array.isArray(newSummary.top_products) ? newSummary.top_products : [];
         const total = products.reduce((acc, p) => acc + Number(p.amount_usd || p.amount || 0), 0);
         const palette = ["#8B6F47","#B5905C","#D8C3A5","#A8A7A7","#E98074","#C0B283","#F4E1D2","#E6B89C"];
@@ -426,7 +400,7 @@ const Dashboard = () => {
         }));
         setServiceBreakdown({ data: breakdown, total });
 
-        // Simple synthetic daily series from total (keeps your nice visuals)
+        /* Synthetic daily series to keep chart lively */
         const days = dateRange === "7d" ? 7 : (dateRange === "30d" ? 30 : 90);
         const avg = total && days ? total / days : (newSummary.kpis.total_30d_cost || 0) / Math.max(days,1);
         const series = Array.from({ length: days }, (_, i) => {
@@ -437,7 +411,7 @@ const Dashboard = () => {
         });
         setCostTrend(series);
 
-        // Key insights
+        /* Key insights */
         const highest = series.reduce((m, pt) => (pt.cost > m.amount ? { date: pt.formatted_date, amount: pt.cost } : m), { date: "-", amount: 0 });
         const projected = series.reduce((sum, pt) => sum + pt.cost, 0);
         setKeyInsights({
@@ -448,7 +422,7 @@ const Dashboard = () => {
           budget_variance: total ? projected - total * 1.1 : 0,
         });
 
-        // --------- NEW: map /api/movers -> TopMoversCard shape ---------
+        /* Map movers */
         const mv = Array.isArray(mvRaw) ? mvRaw : [];
         const mappedMovers = mv.map((m) => {
           const prev = Number(m.prev_usd ?? m.previous_cost ?? 0);
@@ -472,7 +446,6 @@ const Dashboard = () => {
           };
         });
         setTopMovers(mappedMovers);
-        // ---------------------------------------------------------------
 
       } catch (e) {
         console.error("Load error:", e?.message || e, e?.response?.status, e?.config?.url);
@@ -548,8 +521,9 @@ const Dashboard = () => {
             <div className="flex items-center gap-3">
               <img src={logo} alt="Cloud & Capital" className="brand-logo" />
               <div className="leading-tight">
-                <h1 className="text-2xl font-semibold text-brand-ink">Cloud Cost Guard</h1>
-                <p className="text-sm text-brand-muted -mt-0.5">Multi-cloud cost optimization</p>
+                {/* Product title in serif, like your screenshot */}
+                <h1 className="brand-title">Cloud Cost Guard</h1>
+                <p className="brand-subtitle">Multi-cloud cost optimization</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -577,7 +551,8 @@ const Dashboard = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6">
           <Alert className="bg-blue-50 border-blue-200">
-            <AlertTriangle className="h-4 w-4 text-blue-600" />
+            {/* Wave/heartbeat icon like your screenshot */}
+            <Activity className="h-4 w-4 text-brand-ink" />
             <AlertDescription className="text-blue-800">
               <span className="font-medium">Data Source:</span>
               <span className="ml-2 underline decoration-dotted">AWS Cost &amp; Usage Reports</span>
@@ -585,8 +560,9 @@ const Dashboard = () => {
               <span className="underline decoration-dotted">CloudWatch Metrics</span>
               <span className="mx-2">•</span>
               <span className="underline decoration-dotted">Resource Inventory APIs</span>
-              <span className="mx-3 text-brand-muted">
-                Last Updated: {formatTimestamp(summary.generated_at)}
+              {/* Blue, US-format timestamp */}
+              <span className="mx-3 text-blue-700">
+                Last Updated: {formatTimestampUS(summary.generated_at)}
               </span>
             </AlertDescription>
           </Alert>
@@ -605,7 +581,7 @@ const Dashboard = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <TopMoversCard movers={topMovers} />
+          <TopMoversCard movers={topMovers} windowLabel={dateRange} />
           <KeyInsightsCard insights={keyInsights} />
         </div>
 
@@ -705,6 +681,42 @@ const Dashboard = () => {
     </div>
   );
 };
+
+const ProductTable = ({ products }) => (
+  <div className="table-brand rounded-lg">
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="text-brand-muted font-semibold">Product</TableHead>
+          <TableHead className="text-right text-brand-muted font-semibold">30d Cost</TableHead>
+          <TableHead className="text-right text-brand-muted font-semibold">WoW Change</TableHead>
+          <TableHead className="text-right text-brand-muted font-semibold">% of Total</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {products.map((p, i) => {
+          const label = p.product || p.name || p.service || "—";
+          const amount = Number(p.amount_usd || p.amount || 0);
+          const wow = Number(p.wow_delta || 0);
+          const pct = Number(p.percent_of_total || 0);
+          return (
+            <TableRow key={i} className="hover:bg-brand-bg/30">
+              <TableCell className="font-medium text-brand-ink">{label}</TableCell>
+              <TableCell className="text-right text-brand-ink">{formatCurrency(amount)}</TableCell>
+              <TableCell className="text-right">
+                <div className={`flex items-center justify-end gap-1 ${wow >= 0 ? "text-brand-error" : "text-brand-success"}`}>
+                  {wow >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                  {formatCurrency(Math.abs(wow))}
+                </div>
+              </TableCell>
+              <TableCell className="text-right text-brand-ink">{pct.toFixed(1)}%</TableCell>
+            </TableRow>
+          );
+        })}
+      </TableBody>
+    </Table>
+  </div>
+);
 
 const Home = () => <Dashboard />;
 
