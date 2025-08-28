@@ -1,27 +1,30 @@
-/* App.css — Cloud & Capital (Emergent-style theme, no Emergent refs) */
 
-/* Font stacks:
+/* App.css — Cloud & Capital theme tuned to your screenshot */
+
+/* Fonts:
    - Body: Inter (clean sans)
-   - Brand heading: Playfair Display (elegant serif, like the preview vibe)
+   - Product title (Cloud Cost Guard): Playfair Display (elegant serif)
 */
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&display=swap");
 
 /* Design Tokens */
 :root{
-  --brand-ink:#0A0A0A;             /* primary text */
-  --brand-muted:#7A6B5D;           /* muted text labels */
-  --brand-line:#E9E3DE;            /* light separators / borders */
-  --brand-card:#FFFFFF;            /* card bg */
-  --brand-bg:#FAF8F4;              /* page background */
-  --brand-light:#FFFDFB;           /* lighter background accents */
+  --brand-ink:#0A0A0A;
+  --brand-muted:#7A6B5D;
+  --brand-line:#E9E3DE;
+  --brand-card:#FFFFFF;
 
-  --brand-accent:#8B6F47;          /* warm accent (lines/chart) */
-  --brand-accent-2:#B5905C;        /* secondary warm */
-  --brand-accent-3:#D8C3A5;        /* tertiary warm */
+  /* Darker beige background to match screenshot */
+  --brand-bg:#EEDFCC;      /* main beige */
+  --brand-light:#E8D6BF;   /* secondary beige */
 
-  --brand-success:#16803A;         /* success text */
-  --brand-error:#B42318;           /* error text */
+  --brand-accent:#8B6F47;  /* warm accent (button/chart line) */
+  --brand-accent-2:#B5905C;
+  --brand-accent-3:#D8C3A5;
+
+  --brand-success:#16803A;
+  --brand-error:#B42318;
 
   --radius-sm:8px;
   --radius-md:12px;
@@ -36,7 +39,8 @@ body{
   margin:0;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
   color:var(--brand-ink);
-  background:linear-gradient(180deg,var(--brand-bg),var(--brand-light) 40%, var(--brand-bg) 100%);
+  /* beige gradient like the screenshot */
+  background:linear-gradient(180deg,var(--brand-bg),var(--brand-light) 45%, var(--brand-bg) 100%);
 }
 
 /* Header (white top bar) */
@@ -47,23 +51,23 @@ body{
   box-shadow: var(--shadow-sm);
 }
 
-/* Brand */
-.brand-logo{ height:40px; width:auto; display:block; } /* bigger icon */
+/* Brand block */
+.brand-logo{ height:44px; width:auto; display:block; } /* bigger icon */
 .brand-title{
   font-family: "Playfair Display", Georgia, "Times New Roman", serif;
   font-weight: 700;
-  font-size: 24px;
+  font-size: 28px;
   line-height: 1.1;
   color: var(--brand-ink);
   letter-spacing: 0.2px;
 }
 .brand-subtitle{
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--brand-muted);
   margin-top: 2px;
 }
 
-/* Utilities / palette hooks */
+/* Palette hooks */
 .text-brand-ink{ color:var(--brand-ink) !important; }
 .text-brand-muted{ color:var(--brand-muted) !important; }
 .text-brand-success{ color:var(--brand-success) !important; }
@@ -72,7 +76,7 @@ body{
 
 .bg-brand-bg{ background:var(--brand-bg) !important; }
 .bg-brand-light{ background:var(--brand-light) !important; }
-.bg-brand-bg\/30{ background-color: rgba(250, 248, 244, 0.6) !important; }
+.bg-brand-bg\/30{ background-color: rgba(238, 223, 204, 0.6) !important; } /* matches new beige */
 .border-brand-line{ border-color:var(--brand-line) !important; }
 
 /* Cards */
@@ -126,7 +130,7 @@ body{
 
 /* Alerts */
 .alert-brand{
-  background: #F0F7FF;
+  background: #EAF2FF;
   border:1px solid #CFE0FF;
   color:#1E3A8A;
   border-radius: var(--radius-md);
@@ -169,6 +173,7 @@ body{
 .max-w-7xl{ max-width: 80rem; }
 .mx-auto{ margin-left:auto; margin-right:auto; }
 
+/* Misc */
 button{ cursor:pointer; }
 .w-36{ width:9rem; }
 
@@ -176,8 +181,8 @@ button{ cursor:pointer; }
 .w-2{ width:0.5rem; } .h-8{ height:2rem; } .rounded{ border-radius:999px; }
 .bg-red-500{ background:#EF4444; } .bg-green-500{ background:#22C55E; }
 .text-red-600{ color:#DC2626; } .text-green-600{ color:#16A34A; }
-.text-blue-600{ color:#2563EB; } .bg-blue-50{ background:#EFF6FF; }
-.border-blue-200{ border-color:#BFDBFE; } .text-blue-800{ color:#1E40AF; }
+.text-blue-600{ color:#2563EB; } .text-blue-700{ color:#1D4ED8; } .text-blue-800{ color:#1E40AF; }
+.bg-blue-50{ background:#EFF6FF; } .border-blue-200{ border-color:#BFDBFE; }
 
 /* Headings refinement */
 h1,h2,h3{ letter-spacing: 0.2px; }
