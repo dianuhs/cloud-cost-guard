@@ -1,8 +1,9 @@
 {
   "cleanUrls": true,
-  "routes": [
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/" }
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/" }
   ],
-  "functions": { "api/**.js": { "runtime": "nodejs20.x" } }
+  "functions": {
+    "api/**.js": { "runtime": "nodejs20.x" }
+  }
 }
