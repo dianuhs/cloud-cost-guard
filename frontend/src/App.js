@@ -64,21 +64,17 @@ const formatTimestamp = (ts) => {
 /* Pretty month date for Key Insights (e.g., "Aug 21, 2025") */
 const formatPrettyDate = (input) => {
   if (!input) return "-";
-  if (/[A-Za-z]{3}\s+\d{1,2},\s+\d{4}/.test(input)) return input; // already pretty
-  const parts = String(input).split("/");
-  if (parts.length >= 2) {
-    const [mm, dd, yyyyRaw] = parts;
-    const yyyy = (yyyyRaw && yyyyRaw.length === 4) ? yyyyRaw : String(new Date().getFullYear());
-    const d = new Date(`${yyyy}-${String(mm).padStart(2,"0")}-${String(dd).padStart(2,"0")}T00:00:00`);
-    if (!isNaN(d)) {
-      return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-    }
+  if (/[A-Za-z]{3}\s+\d{1,2},\s+\d{4}/.test(input)) return input;
+  const tryDate = (v) => {
+    const d = new Date(v);
+    return isNaN(d) ? null : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  };
+  if (typeof input === "string" && input.includes("/")) {
+    const [mm, dd, y] = input.split("/");
+    const yyyy = (y && y.length === 4) ? y : String(new Date().getFullYear());
+    return tryDate(`${yyyy}-${mm.padStart(2,"0")}-${dd.padStart(2,"0")}`) || input;
   }
-  const d = new Date(input);
-  if (!isNaN(d)) {
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  }
-  return input;
+  return tryDate(input) || input;
 };
 
 const getConfidenceColor = (confidence) => ({
@@ -152,7 +148,7 @@ const CostTrendChart = ({ data, height = 300, label = "Cost trends over the last
             <XAxis dataKey="formatted_date" stroke="#7A6B5D" fontSize={12} tick={{ fill: "#7A6B5D" }} />
             <YAxis stroke="#7A6B5D" fontSize={12} tick={{ fill: "#7A6B5D" }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
             <Tooltip
-              contentStyle={{ backgroundColor: "#FFF", border: "1px solid #E9E3DE", borderRadius: 8, color: "#0A0A0A" }}
+              contentStyle={{ backgroundColor: "#FFF", border: "1px solid "#E9E3DE", borderRadius: 8, color: "#0A0A0A" }}
               formatter={(value) => [formatCurrency(value), "Daily Cost"]}
               labelFormatter={(label) => `Date: ${label}`}
             />
@@ -213,7 +209,7 @@ const TopMoversCard = ({ movers, windowLabel = "7d" }) => (
         <TrendingUpIcon className="h-5 w-5" />
         Top Movers ({windowLabel})
       </CardTitle>
-      {/* Subtitle text fixed per request */}
+      {/* Fixed subtitle */}
       <CardDescription className="text-brand-muted">Biggest cost changes in the last week</CardDescription>
     </CardHeader>
     <CardContent>
@@ -380,17 +376,31 @@ const ProductTable = ({ products }) => (
 );
 
 /* -------- Helpers: normalize movers payloads from different endpoints -------- */
+const unwrapArray = (raw) => {
+  if (Array.isArray(raw)) return raw;
+  if (!raw || typeof raw !== "object") return [];
+  if (Array.isArray(raw.items)) return raw.items;
+  if (Array.isArray(raw.data)) return raw.data;
+  if (Array.isArray(raw.movers)) return raw.movers;
+  if (Array.isArray(raw.top_movers)) return raw.top_movers;
+  return [];
+};
+
+const toNum = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
+
 const normalizeMovers = (raw) => {
-  const arr = Array.isArray(raw) ? raw : (Array.isArray(raw?.items) ? raw.items : []);
-  return arr.map((m) => {
-    const prev = Number(m.prev_usd ?? m.previous_cost ?? 0);
-    const curr = Number(m.current_usd ?? m.current_cost ?? m.amount_usd ?? 0);
-    const changeAmt = Number(
-      m.change_usd ?? m.delta_usd ?? m.change_amount ?? (curr - prev)
-    );
+  const arr = unwrapArray(raw);
+  const out = arr.map((m) => {
+    const prev = toNum(m.prev_usd ?? m.previous_cost ?? m.prev ?? 0);
+    const curr = toNum(m.current_usd ?? m.current_cost ?? m.curr ?? m.amount_usd ?? 0);
+    const changeAmt = toNum(m.change_usd ?? m.delta_usd ?? m.change_amount ?? (curr - prev));
     const rawPct = m.change_pct ?? m.delta_pct ?? m.change_percent ??
       (prev > 0 ? ((curr - prev) / prev) * 100 : (curr > 0 ? 100 : 0));
-    const changePct = Math.round(Number(rawPct || 0) * 10) / 10;
+    const changePct = Math.round(toNum(rawPct) * 10) / 10;
+
     return {
       service: m.service || m.name || "—",
       previous_cost: prev,
@@ -399,6 +409,34 @@ const normalizeMovers = (raw) => {
       change_percent: changePct
     };
   });
+
+  // sort by absolute change desc for a stronger visual
+  out.sort((a, b) => Math.abs(b.change_amount) - Math.abs(a.change_amount));
+  return out;
+};
+
+/* Try a list of likely endpoints until one returns data */
+const fetchMovers = async () => {
+  const candidates = [
+    `${API}/movers?window=7d`,
+    `${API}/movers?days=7`,
+    `${API}/top-movers?days=7`,
+    `${API}/top-movers`,
+    `${API}/movers`,
+    `${API}/top_movers?days=7`,
+    `${API}/top_movers`,
+  ];
+
+  for (const url of candidates) {
+    try {
+      const { data } = await axios.get(url);
+      const normalized = normalizeMovers(data);
+      if (normalized.length > 0) return normalized;
+    } catch {
+      // try next
+    }
+  }
+  return [];
 };
 
 /* -------- Main -------- */
@@ -428,24 +466,7 @@ const Dashboard = () => {
         axios.get(`${API}/findings?sort=savings&limit=50`)
       ]);
 
-      // Try primary movers endpoint
-      let moversData = [];
-      try {
-        const mvRes = await axios.get(`${API}/movers?window=7d`);
-        moversData = normalizeMovers(mvRes.data);
-      } catch {
-        moversData = [];
-      }
-
-      // Fallback to alternate endpoint if empty
-      if (!Array.isArray(moversData) || moversData.length === 0) {
-        try {
-          const altRes = await axios.get(`${API}/top-movers?days=7`);
-          moversData = normalizeMovers(altRes.data);
-        } catch {
-          // keep empty
-        }
-      }
+      const moversData = await fetchMovers();
 
       const sum = sumRes.data || {};
       const kpis = sum.kpis || {};
