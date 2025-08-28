@@ -1,10 +1,6 @@
+/* App.css — Cloud & Capital theme tuned to your spec */
 
-/* App.css — Cloud & Capital theme tuned to your screenshot */
-
-/* Fonts:
-   - Body: Inter (clean sans)
-   - Product title (Cloud Cost Guard): Playfair Display (elegant serif)
-*/
+/* Fonts */
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&display=swap");
 
@@ -15,11 +11,11 @@
   --brand-line:#E9E3DE;
   --brand-card:#FFFFFF;
 
-  /* Darker beige background to match screenshot */
-  --brand-bg:#EEDFCC;      /* main beige */
-  --brand-light:#E8D6BF;   /* secondary beige */
+  /* Solid beige background as requested */
+  --brand-bg:#f5eee9;
+  --brand-light:#f5eee9;
 
-  --brand-accent:#8B6F47;  /* warm accent (button/chart line) */
+  --brand-accent:#8B6F47;
   --brand-accent-2:#B5905C;
   --brand-accent-3:#D8C3A5;
 
@@ -39,8 +35,7 @@ body{
   margin:0;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
   color:var(--brand-ink);
-  /* beige gradient like the screenshot */
-  background:linear-gradient(180deg,var(--brand-bg),var(--brand-light) 45%, var(--brand-bg) 100%);
+  background: var(--brand-bg); /* exact beige */
 }
 
 /* Header (white top bar) */
@@ -52,7 +47,7 @@ body{
 }
 
 /* Brand block */
-.brand-logo{ height:44px; width:auto; display:block; } /* bigger icon */
+.brand-logo{ height:44px; width:auto; display:block; }
 .brand-title{
   font-family: "Playfair Display", Georgia, "Times New Roman", serif;
   font-weight: 700;
@@ -76,7 +71,7 @@ body{
 
 .bg-brand-bg{ background:var(--brand-bg) !important; }
 .bg-brand-light{ background:var(--brand-light) !important; }
-.bg-brand-bg\/30{ background-color: rgba(238, 223, 204, 0.6) !important; } /* matches new beige */
+.bg-brand-bg\/30{ background-color: rgba(245, 238, 233, 0.6) !important; }
 .border-brand-line{ border-color:var(--brand-line) !important; }
 
 /* Cards */
