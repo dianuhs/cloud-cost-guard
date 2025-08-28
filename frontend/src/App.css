@@ -1,11 +1,13 @@
-/* App.css — Cloud & Capital (Emergent-style theme, no Emergent refs)
-   Drop-in: replace your existing frontend/src/App.css with this file.
+/* App.css — Cloud & Capital (Emergent-style theme, no Emergent refs) */
+
+/* Font stacks:
+   - Body: Inter (clean sans)
+   - Brand heading: Playfair Display (elegant serif, like the preview vibe)
 */
-
-/* 1) Font (safe: in-CSS import) */
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&display=swap");
 
-/* 2) Design Tokens */
+/* Design Tokens */
 :root{
   --brand-ink:#0A0A0A;             /* primary text */
   --brand-muted:#7A6B5D;           /* muted text labels */
@@ -20,7 +22,6 @@
 
   --brand-success:#16803A;         /* success text */
   --brand-error:#B42318;           /* error text */
-  --brand-info:#1E40AF;            /* info text (blue) */
 
   --radius-sm:8px;
   --radius-md:12px;
@@ -29,16 +30,16 @@
   --shadow-md:0 6px 16px rgba(10,10,10,0.06);
 }
 
-/* 3) Base */
+/* Base */
 html,body,#root,.App{height:100%;}
 body{
   margin:0;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
   color:var(--brand-ink);
   background:linear-gradient(180deg,var(--brand-bg),var(--brand-light) 40%, var(--brand-bg) 100%);
 }
 
-/* 4) Header (white top bar) */
+/* Header (white top bar) */
 .nav-header{
   position:sticky; top:0; z-index:20;
   background:#fff;
@@ -46,8 +47,23 @@ body{
   box-shadow: var(--shadow-sm);
 }
 
-/* 5) Brand */
-.brand-logo{ height:28px; width:auto; display:block; }
+/* Brand */
+.brand-logo{ height:40px; width:auto; display:block; } /* bigger icon */
+.brand-title{
+  font-family: "Playfair Display", Georgia, "Times New Roman", serif;
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 1.1;
+  color: var(--brand-ink);
+  letter-spacing: 0.2px;
+}
+.brand-subtitle{
+  font-size: 12.5px;
+  color: var(--brand-muted);
+  margin-top: 2px;
+}
+
+/* Utilities / palette hooks */
 .text-brand-ink{ color:var(--brand-ink) !important; }
 .text-brand-muted{ color:var(--brand-muted) !important; }
 .text-brand-success{ color:var(--brand-success) !important; }
@@ -56,13 +72,10 @@ body{
 
 .bg-brand-bg{ background:var(--brand-bg) !important; }
 .bg-brand-light{ background:var(--brand-light) !important; }
-
-/* match literal "bg-brand-bg/30" class used in JSX */
 .bg-brand-bg\/30{ background-color: rgba(250, 248, 244, 0.6) !important; }
-
 .border-brand-line{ border-color:var(--brand-line) !important; }
 
-/* 6) Cards, sections */
+/* Cards */
 .kpi-card{
   background:var(--brand-card);
   border:1px solid var(--brand-line);
@@ -71,27 +84,21 @@ body{
 }
 .kpi-card:hover{ box-shadow: var(--shadow-md); }
 
-/* 7) Buttons */
+/* Buttons */
 .btn-brand-primary{
   background:var(--brand-accent);
   color:#fff; border:1px solid var(--brand-accent);
   border-radius: var(--radius-md);
 }
-.btn-brand-primary:hover{
-  filter: brightness(0.95);
-}
-
+.btn-brand-primary:hover{ filter: brightness(0.95); }
 .btn-brand-outline{
-  background:#fff;
-  color:var(--brand-ink);
+  background:#fff; color:var(--brand-ink);
   border:1px solid var(--brand-line);
   border-radius: var(--radius-md);
 }
-.btn-brand-outline:hover{
-  background:#fafafa;
-}
+.btn-brand-outline:hover{ background:#fafafa; }
 
-/* 8) Badges */
+/* Badges */
 .badge-brand{
   background: #EEF2FF;
   color: #3730A3;
@@ -100,7 +107,7 @@ body{
   padding: 4px 8px;
 }
 
-/* 9) Tabs */
+/* Tabs */
 .tabs-list{
   background:#fff;
   border:1px solid var(--brand-line);
@@ -117,7 +124,7 @@ body{
   box-shadow: inset 0 0 0 1px var(--brand-line);
 }
 
-/* 10) Alerts */
+/* Alerts */
 .alert-brand{
   background: #F0F7FF;
   border:1px solid #CFE0FF;
@@ -125,7 +132,7 @@ body{
   border-radius: var(--radius-md);
 }
 
-/* 11) Tables */
+/* Tables */
 .table-brand table{ width:100%; border-collapse: collapse; }
 .table-brand thead th{
   border-bottom:1px solid var(--brand-line);
@@ -141,68 +148,43 @@ body{
   font-size: 0.95rem;
   color: var(--brand-ink);
 }
-.table-brand tr:hover td{
-  background: rgba(233,227,222,0.25);
-}
+.table-brand tr:hover td{ background: rgba(233,227,222,0.25); }
 
-/* 12) Severity chips (matching the PDF look) */
-.severity-critical{
-  background:#FEE2E2; color:#991B1B; border:1px solid #FECACA;
-}
-.severity-high{
-  background:#FEF3C7; color:#92400E; border:1px solid #FDE68A;
-}
-.severity-medium{
-  background:#ECFEFF; color:#155E75; border:1px solid #BAE6FD;
-}
-.severity-low{
-  background:#F3F4F6; color:#374151; border:1px solid #E5E7EB;
-}
+/* Severity chips */
+.severity-critical{ background:#FEE2E2; color:#991B1B; border:1px solid #FECACA; }
+.severity-high{ background:#FEF3C7; color:#92400E; border:1px solid #FDE68A; }
+.severity-medium{ background:#ECFEFF; color:#155E75; border:1px solid #BAE6FD; }
+.severity-low{ background:#F3F4F6; color:#374151; border:1px solid #E5E7EB; }
 
-/* 13) Recharts tooltips */
+/* Recharts tooltip */
 .recharts-default-tooltip{
   border:1px solid var(--brand-line) !important;
   border-radius: 8px !important;
   background:#fff !important;
   color: var(--brand-ink) !important;
 }
+.recharts-tooltip-label{ color: var(--brand-muted) !important; }
 
-/* 14) Misc layout helpers */
-.max-w-7xl{ max-width: 80rem; }  /* keeps your content width */
+/* Layout helpers */
+.max-w-7xl{ max-width: 80rem; }
 .mx-auto{ margin-left:auto; margin-right:auto; }
 
-/* buttons */
 button{ cursor:pointer; }
-
-/* Inputs (Select trigger styling fallback) */
 .w-36{ width:9rem; }
 
-/* 15) Utility for small rounded colored bars in Movers */
+/* Movers colored bars + text colors */
 .w-2{ width:0.5rem; } .h-8{ height:2rem; } .rounded{ border-radius:999px; }
 .bg-red-500{ background:#EF4444; } .bg-green-500{ background:#22C55E; }
 .text-red-600{ color:#DC2626; } .text-green-600{ color:#16A34A; }
-.text-blue-600{ color:#2563EB; }
-.bg-blue-50{ background:#EFF6FF; } .border-blue-200{ border-color:#BFDBFE; }
-.text-blue-800{ color:#1E40AF; }
+.text-blue-600{ color:#2563EB; } .bg-blue-50{ background:#EFF6FF; }
+.border-blue-200{ border-color:#BFDBFE; } .text-blue-800{ color:#1E40AF; }
 
-/* 16) Headings refinement (matching preview tone) */
+/* Headings refinement */
 h1,h2,h3{ letter-spacing: 0.2px; }
-h1{ font-weight:600; }
-h2{ font-weight:600; }
+h1{ font-weight:600; } h2{ font-weight:600; }
 
-/* 17) Tooltip label text in charts */
-.recharts-tooltip-label{ color: var(--brand-muted) !important; }
-
-/* 18) Small “LIVE” label */
-.text-xs{ font-size: 0.75rem; }
-.font-medium{ font-weight: 500; }
-.font-semibold{ font-weight: 600; }
-.font-bold{ font-weight: 700; }
-
-/* 19) Spacing shortcuts mirrored from your JSX */
+/* Spacing */
 .p-2{ padding:0.5rem; } .p-3{ padding:0.75rem; }
 .p-4{ padding:1rem; } .py-12{ padding-top:3rem; padding-bottom:3rem; }
 .rounded-lg{ border-radius: var(--radius-lg); }
-
-/* 20) Simple shadows for hover */
 .hover\:shadow-brand-md:hover{ box-shadow: var(--shadow-md); }
