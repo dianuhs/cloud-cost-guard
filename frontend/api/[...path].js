@@ -1,13 +1,23 @@
-// Serverless proxy so /api/* on your domain forwards to Emergent preview backend
-// Works on Vercel Node 20+. No config needed beyond this file.
+// Generic serverless proxy: forwards /api/* on YOUR domain to an upstream backend.
+// No vendor names hardcoded. Configure the target via env var UPSTREAM_BASE.
 
 module.exports = async (req, res) => {
   try {
+    const upstream = process.env.UPSTREAM_BASE; // e.g. https://api.guard.cloudandcapital.com
+    if (!upstream) {
+      res
+        .status(500)
+        .json({ error: "UPSTREAM_BASE env var not set for proxy" });
+      return;
+    }
+
+    // Build target URL: <UPSTREAM_BASE>/api/<tail>?<qs>
     const segs = Array.isArray(req.query.path) ? req.query.path : [];
     const tail = segs.join("/");
     const qs = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
-    const target = `https://cloudcostguard.preview.emergentagent.com/api/${tail}${qs}`;
+    const target = `${upstream.replace(/\/+$/, "")}/api/${tail}${qs}`;
 
+    // Read body for non-GET/HEAD
     let body;
     if (req.method !== "GET" && req.method !== "HEAD") {
       const chunks = [];
@@ -18,9 +28,11 @@ module.exports = async (req, res) => {
     const resp = await fetch(target, {
       method: req.method,
       headers: {
+        // Pass through only safe headers
         "content-type": req.headers["content-type"] || undefined,
-        "authorization": req.headers["authorization"] || undefined,
         "accept": req.headers["accept"] || "application/json",
+        // If your upstream needs auth, put a static token in an env var instead:
+        // "authorization": process.env.UPSTREAM_AUTH || undefined,
       },
       body,
       redirect: "manual",
