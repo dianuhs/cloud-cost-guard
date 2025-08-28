@@ -1,208 +1,208 @@
-/* ---------- Cloud & Capital theme ---------- */
+/* App.css — Cloud & Capital (Emergent-style theme, no Emergent refs)
+   Drop-in: replace your existing frontend/src/App.css with this file.
+*/
+
+/* 1) Font (safe: in-CSS import) */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+/* 2) Design Tokens */
 :root{
-  --brand-bg:#F6F2EE;          /* page background */
-  --brand-light:#FBF9F7;       /* subtle sections */
-  --brand-card:#FFFFFF;        /* cards */
-  --brand-ink:#0A0A0A;         /* primary text */
-  --brand-muted:#7A6B5D;       /* secondary text */
-  --brand-line:#E9E3DE;        /* borders */
-  --brand-accent:#8B6F47;      /* primary accent (olive/gold) */
-  --brand-accent-2:#B5905C;    /* warm amber */
-  --brand-success:#1B9E6F;     /* greens */
-  --brand-success-50:#E8F6F0;
-  --brand-warning:#E6B36A;     /* soft amber */
-  --brand-warning-50:#FFF6E6;
-  --brand-error:#D0715E;       /* warm red */
-  --brand-error-50:#FDEDEA;
+  --brand-ink:#0A0A0A;             /* primary text */
+  --brand-muted:#7A6B5D;           /* muted text labels */
+  --brand-line:#E9E3DE;            /* light separators / borders */
+  --brand-card:#FFFFFF;            /* card bg */
+  --brand-bg:#FAF8F4;              /* page background */
+  --brand-light:#FFFDFB;           /* lighter background accents */
 
-  --radius-lg:16px;
+  --brand-accent:#8B6F47;          /* warm accent (lines/chart) */
+  --brand-accent-2:#B5905C;        /* secondary warm */
+  --brand-accent-3:#D8C3A5;        /* tertiary warm */
+
+  --brand-success:#16803A;         /* success text */
+  --brand-error:#B42318;           /* error text */
+  --brand-info:#1E40AF;            /* info text (blue) */
+
+  --radius-sm:8px;
   --radius-md:12px;
-  --radius-sm:10px;
-
-  --shadow-sm:0 1px 2px rgba(10,10,10,.04), 0 1px 1px rgba(10,10,10,.03);
-  --shadow-md:0 6px 16px rgba(10,10,10,.08), 0 2px 6px rgba(10,10,10,.04);
-  --shadow-lg:0 12px 22px rgba(10,10,10,.10), 0 3px 10px rgba(10,10,10,.05);
+  --radius-lg:16px;
+  --shadow-sm:0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md:0 6px 16px rgba(10,10,10,0.06);
 }
 
-html,body,#root,.App{height:100%}
+/* 3) Base */
+html,body,#root,.App{height:100%;}
 body{
   margin:0;
-  background:linear-gradient(180deg,var(--brand-bg),var(--brand-light));
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
   color:var(--brand-ink);
-  -webkit-font-smoothing:antialiased;
-  -moz-osx-font-smoothing:grayscale;
+  background:linear-gradient(180deg,var(--brand-bg),var(--brand-light) 40%, var(--brand-bg) 100%);
 }
 
-/* ---------- Header ---------- */
+/* 4) Header (white top bar) */
 .nav-header{
-  position:sticky;top:0;z-index:20;
-  backdrop-filter:saturate(1.1) blur(6px);
-  background:rgba(246,242,238,.7);
-  border-bottom:1px solid var(--brand-line);
-}
-
-/* Bigger, crisp app logo in header */
-.brand-logo{
-  width:40px;               /* increase to 48px if desired */
-  height:40px;
-  border-radius:8px;
-  border:1px solid var(--brand-line);
-  box-shadow:var(--shadow-sm);
-  object-fit:contain;
+  position:sticky; top:0; z-index:20;
   background:#fff;
-  padding:2px;
+  border-bottom:1px solid var(--brand-line);
+  box-shadow: var(--shadow-sm);
 }
 
-/* ---------- Cards ---------- */
-.kpi-card,.finding-card{
+/* 5) Brand */
+.brand-logo{ height:28px; width:auto; display:block; }
+.text-brand-ink{ color:var(--brand-ink) !important; }
+.text-brand-muted{ color:var(--brand-muted) !important; }
+.text-brand-success{ color:var(--brand-success) !important; }
+.text-brand-error{ color:var(--brand-error) !important; }
+.text-brand-light-muted{ color:#AFA49A !important; }
+
+.bg-brand-bg{ background:var(--brand-bg) !important; }
+.bg-brand-light{ background:var(--brand-light) !important; }
+
+/* match literal "bg-brand-bg/30" class used in JSX */
+.bg-brand-bg\/30{ background-color: rgba(250, 248, 244, 0.6) !important; }
+
+.border-brand-line{ border-color:var(--brand-line) !important; }
+
+/* 6) Cards, sections */
+.kpi-card{
   background:var(--brand-card);
   border:1px solid var(--brand-line);
   border-radius:var(--radius-lg);
-  box-shadow:var(--shadow-sm);
+  box-shadow: var(--shadow-sm);
 }
-.kpi-card:hover,.finding-card:hover{box-shadow:var(--shadow-md)}
+.kpi-card:hover{ box-shadow: var(--shadow-md); }
 
-/* ---------- Buttons ---------- */
+/* 7) Buttons */
 .btn-brand-primary{
-  background:var(--brand-accent)!important;
-  color:#fff!important;
-  border:1px solid #7f633e!important;
-  border-radius:var(--radius-sm)!important;
+  background:var(--brand-accent);
+  color:#fff; border:1px solid var(--brand-accent);
+  border-radius: var(--radius-md);
 }
-.btn-brand-primary:hover{filter:brightness(.97)}
+.btn-brand-primary:hover{
+  filter: brightness(0.95);
+}
+
 .btn-brand-outline{
-  background:transparent!important;
-  color:var(--brand-accent)!important;
-  border:1px solid var(--brand-line)!important;
-  border-radius:var(--radius-sm)!important;
+  background:#fff;
+  color:var(--brand-ink);
+  border:1px solid var(--brand-line);
+  border-radius: var(--radius-md);
 }
-.btn-brand-outline:hover{background:#faf6f1!important}
+.btn-brand-outline:hover{
+  background:#fafafa;
+}
 
-/* tiny soft pill used in a few places */
+/* 8) Badges */
 .badge-brand{
-  background:#F3F8F5;
-  color:var(--brand-success);
-  border:1px solid rgba(27,158,111,.15);
-  border-radius:999px;
+  background: #EEF2FF;
+  color: #3730A3;
+  border: 1px solid #E5E7EB;
+  border-radius: 999px;
+  padding: 4px 8px;
 }
 
-/* ---------- Alerts ---------- */
-.alert-brand{
-  background:#F0F7FF;
-  border:1px solid #CFE3FF;
-  color:#0F3B7A;
-  border-radius:var(--radius-md);
-}
-
-/* ---------- Tabs ---------- */
+/* 9) Tabs */
 .tabs-list{
   background:#fff;
   border:1px solid var(--brand-line);
-  border-radius:999px;
+  border-radius: var(--radius-md);
   padding:4px;
 }
 .tab-trigger{
-  border-radius:999px!important;
-  color:var(--brand-muted)!important;
+  border-radius: var(--radius-sm);
+  color:var(--brand-muted);
 }
-.tab-trigger[data-state="active"]{
-  background:var(--brand-bg)!important;
-  color:var(--brand-ink)!important;
-  border:1px solid var(--brand-line)!important;
+.tab-trigger[aria-selected="true"]{
+  background:var(--brand-bg);
+  color:var(--brand-ink);
+  box-shadow: inset 0 0 0 1px var(--brand-line);
 }
 
-/* ---------- Tables ---------- */
-.table-brand table{width:100%;border-collapse:separate;border-spacing:0}
+/* 10) Alerts */
+.alert-brand{
+  background: #F0F7FF;
+  border:1px solid #CFE0FF;
+  color:#1E3A8A;
+  border-radius: var(--radius-md);
+}
+
+/* 11) Tables */
+.table-brand table{ width:100%; border-collapse: collapse; }
 .table-brand thead th{
-  background:#fff;
   border-bottom:1px solid var(--brand-line);
+  padding:12px 10px;
+  background:#FFFDFB;
+  font-weight:600;
+  font-size: 0.92rem;
+  color: var(--brand-muted);
 }
-.table-brand tbody tr:hover{background:rgba(246,242,238,.45)}
+.table-brand tbody td{
+  border-bottom:1px solid var(--brand-line);
+  padding:12px 10px;
+  font-size: 0.95rem;
+  color: var(--brand-ink);
+}
+.table-brand tr:hover td{
+  background: rgba(233,227,222,0.25);
+}
 
-/* ---------- Severity & Confidence badges ---------- */
+/* 12) Severity chips (matching the PDF look) */
 .severity-critical{
-  background:var(--brand-error-50)!important;
-  color:var(--brand-error)!important;
-  border:1px solid rgba(208,113,94,.25)!important;
-  font-weight:600;text-transform:uppercase;
-  border-radius:8px;padding:4px 8px;
+  background:#FEE2E2; color:#991B1B; border:1px solid #FECACA;
 }
 .severity-high{
-  background:var(--brand-warning-50)!important;
-  color:#83653A!important;
-  border:1px solid rgba(230,179,106,.35)!important;
-  font-weight:600;text-transform:uppercase;
-  border-radius:8px;padding:4px 8px;
+  background:#FEF3C7; color:#92400E; border:1px solid #FDE68A;
 }
 .severity-medium{
-  background:#FFF!important;
-  color:#8A774F!important;
-  border:1px solid var(--brand-line)!important;
-  font-weight:600;text-transform:uppercase;
-  border-radius:8px;padding:4px 8px;
+  background:#ECFEFF; color:#155E75; border:1px solid #BAE6FD;
 }
 .severity-low{
-  background:#F6FAF7!important;
-  color:var(--brand-success)!important;
-  border:1px solid rgba(27,158,111,.25)!important;
-  font-weight:600;text-transform:uppercase;
-  border-radius:8px;padding:4px 8px;
+  background:#F3F4F6; color:#374151; border:1px solid #E5E7EB;
 }
 
-/* CONF pill look */
-.text-green-700.bg-green-50,
-.text-green-600.bg-green-50{
-  background:#EAF6EF!important; color:#187d58!important;
-  border:1px solid rgba(24,125,88,.22)!important;
-  font-weight:700; letter-spacing:.02em;
-}
-.text-yellow-600.bg-yellow-50{
-  background:#FFF7E6!important; color:#8A6A2E!important;
-  border:1px solid rgba(234,187,102,.35)!important;
-  font-weight:700; letter-spacing:.02em;
-}
-.text-red-600.bg-red-50{
-  background:#FDEDEC!important; color:#B15146!important;
-  border:1px solid rgba(177,81,70,.25)!important;
-  font-weight:700; letter-spacing:.02em;
+/* 13) Recharts tooltips */
+.recharts-default-tooltip{
+  border:1px solid var(--brand-line) !important;
+  border-radius: 8px !important;
+  background:#fff !important;
+  color: var(--brand-ink) !important;
 }
 
-/* ---------- Finding card internals ---------- */
-.finding-card .card-header{padding-bottom:0}
-.finding-card .card-content{padding-top:10px}
+/* 14) Misc layout helpers */
+.max-w-7xl{ max-width: 80rem; }  /* keeps your content width */
+.mx-auto{ margin-left:auto; margin-right:auto; }
 
-.finding-card code{
-  display:block;
-  background:#FAF7F3;
-  border:1px solid var(--brand-line);
-  border-radius:10px;
-  padding:10px 12px;
-  color:#3b3227;
-}
+/* buttons */
+button{ cursor:pointer; }
 
-.finding-card .btn-brand-outline{
-  display:flex;align-items:center;justify-content:center;
-  gap:6px;border-radius:999px!important;
-}
-.finding-card .btn-brand-outline::before{
-  content:"";display:inline-block;width:8px;height:8px;border-radius:50%;
-  background:var(--brand-accent); opacity:.85;
-}
+/* Inputs (Select trigger styling fallback) */
+.w-36{ width:9rem; }
 
-/* KPI text helpers */
-.text-brand-ink{color:var(--brand-ink)}
-.text-brand-muted{color:var(--brand-muted)}
-.text-brand-success{color:var(--brand-success)}
-.text-brand-warning{color:var(--brand-warning)}
-.text-brand-error{color:var(--brand-error)}
-.text-brand-light-muted{color:#A89A8B}
+/* 15) Utility for small rounded colored bars in Movers */
+.w-2{ width:0.5rem; } .h-8{ height:2rem; } .rounded{ border-radius:999px; }
+.bg-red-500{ background:#EF4444; } .bg-green-500{ background:#22C55E; }
+.text-red-600{ color:#DC2626; } .text-green-600{ color:#16A34A; }
+.text-blue-600{ color:#2563EB; }
+.bg-blue-50{ background:#EFF6FF; } .border-blue-200{ border-color:#BFDBFE; }
+.text-blue-800{ color:#1E40AF; }
 
-.border-brand-line{border-color:var(--brand-line)}
-.bg-brand-bg{background:var(--brand-bg)}
-.bg-brand-bg\/30{background:rgba(246,242,238,.3)}
-.bg-brand-bg\/50{background:rgba(246,242,238,.5)}
-.bg-brand-light{background:var(--brand-light)}
-.text-brand-accent{color:var(--brand-accent)}
+/* 16) Headings refinement (matching preview tone) */
+h1,h2,h3{ letter-spacing: 0.2px; }
+h1{ font-weight:600; }
+h2{ font-weight:600; }
 
-.max-w-7xl{max-width:1120px}
+/* 17) Tooltip label text in charts */
+.recharts-tooltip-label{ color: var(--brand-muted) !important; }
 
+/* 18) Small “LIVE” label */
+.text-xs{ font-size: 0.75rem; }
+.font-medium{ font-weight: 500; }
+.font-semibold{ font-weight: 600; }
+.font-bold{ font-weight: 700; }
+
+/* 19) Spacing shortcuts mirrored from your JSX */
+.p-2{ padding:0.5rem; } .p-3{ padding:0.75rem; }
+.p-4{ padding:1rem; } .py-12{ padding-top:3rem; padding-bottom:3rem; }
+.rounded-lg{ border-radius: var(--radius-lg); }
+
+/* 20) Simple shadows for hover */
+.hover\:shadow-brand-md:hover{ box-shadow: var(--shadow-md); }
