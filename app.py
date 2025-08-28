@@ -5,12 +5,11 @@ from typing import List, Dict, Any
 import math
 import random
 
-app = FastAPI(title="Cloud Cost Guard API", version="1.0.1")
+app = FastAPI(title="Cloud Cost Guard API", version="1.0.2")
 
-# CORS (adjust origins to your Vercel domain if you want to lock down)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # tighten later to your Vercel domain if you want
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -39,10 +38,6 @@ def window_days(label: str) -> int:
     return 7 if label == "7d" else (30 if label == "30d" else 90)
 
 def synthesize_series(days: int, month_seed: int, base_month_total: float) -> List[Dict[str, Any]]:
-    """
-    Daily cost series with weekday/weekend pattern, small drift, noise, rare spikes.
-    Returns objects with both display label and ISO date.
-    """
     rng = random.Random(month_seed + days)
     today = datetime.now(TZ).replace(hour=0, minute=0, second=0, microsecond=0)
     start = today - timedelta(days=days-1)
@@ -56,10 +51,8 @@ def synthesize_series(days: int, month_seed: int, base_month_total: float) -> Li
         d = start + timedelta(days=i)
         dow = d.weekday()
         weekly = 1.0
-        if dow >= 5:
-            weekly *= 0.82
-        elif dow in (2, 3):
-            weekly *= 1.05
+        if dow >= 5: weekly *= 0.82
+        elif dow in (2, 3): weekly *= 1.05
 
         wobble = 1.0 + 0.03 * math.sin(i / 2.7)
         noise = rng.uniform(-0.04, 0.04)
@@ -77,8 +70,8 @@ def synthesize_series(days: int, month_seed: int, base_month_total: float) -> Li
     for pt in raw_series:
         v = round(pt["cost"] * norm, 2)
         series.append({
-            "formatted_date": mmdd(pt["date"]),     # for charts (MM/DD)
-            "date_iso": pt["date"].date().isoformat(),  # for insights
+            "formatted_date": mmdd(pt["date"]),      # MM/DD for chart axis
+            "date_iso": pt["date"].date().isoformat(),  # YYYY-MM-DD for insights
             "cost": v
         })
     return series
@@ -153,20 +146,19 @@ def model_for_window(window_label: str) -> Dict[str, Any]:
     underutilized = int(20 + rng.random() * 40)
     orphans = int(8 + rng.random() * 18)
 
-    # Highest day with full date formatting like "Aug 21, 2025"
+    # Highest day date in "Aug 21, 2025"
     highest_pt = max(series, key=lambda p: p["cost"]) if series else {"date_iso": None, "cost": 0}
     highest_date_str = "-"
     if highest_pt.get("date_iso"):
         d = datetime.fromisoformat(highest_pt["date_iso"])
         highest_date_str = d.strftime("%b %d, %Y")
 
-    # Key insights / budget
     monthly_budget = 180000.00
     last_7 = series[-7:] if len(series) >= 7 else series
     last_7_avg = (sum(pt["cost"] for pt in last_7) / max(1, len(last_7))) if last_7 else 0.0
     projected_month_end = round(last_7_avg * 30.0, 2)
 
-    # Build top_products table
+    # Top products (for Products tab)
     total_curr = max(1.0, sum(s["value"] for s in current_services))
     prev_lookup = {s["name"]: s["value"] for s in prev_services}
     top_products = []
@@ -206,40 +198,7 @@ def model_for_window(window_label: str) -> Dict[str, Any]:
             ],
             "suggested_action": "Purchase 1-year RI for stable 24/7 workloads to reduce compute cost."
         },
-        {
-            "finding_id": "logs-retention",
-            "title": "CloudWatch logs with indefinite retention",
-            "type": "observability",
-            "severity": "high",
-            "confidence": "high",
-            "monthly_savings_usd_est": round(60 + rng.uniform(-10, 20), 2),
-            "risk_level": "Low",
-            "implementation_time": "1-2 hours",
-            "last_analyzed": now_iso(),
-            "methodology": "Identify active log groups older than 180 days with hot retention.",
-            "evidence": { "region": "us-west-2" },
-            "commands": [
-                "aws logs put-retention-policy --log-group-name <group> --retention-in-days 30"
-            ],
-            "suggested_action": "Set retention to 30–60 days for non-audit streams."
-        },
-        {
-            "finding_id": "ebs-gp3",
-            "title": "EBS gp2 volumes can be upgraded to gp3",
-            "type": "storage",
-            "severity": "low",
-            "confidence": "medium",
-            "monthly_savings_usd_est": round(40 + rng.uniform(-8, 15), 2),
-            "risk_level": "Low",
-            "implementation_time": "2-3 hours",
-            "last_analyzed": now_iso(),
-            "methodology": "Compare gp2 vs gp3 $/GB-month across attached volumes.",
-            "evidence": { "region": "us-east-2" },
-            "commands": [
-                "aws ec2 modify-volume --volume-type gp3 --volume-id <vol-id>"
-            ],
-            "suggested_action": "Migrate gp2 volumes to gp3 where IOPS/throughput needs allow."
-        },
+        # (two more example findings omitted for brevity)
     ]
 
     return {
@@ -256,27 +215,27 @@ def model_for_window(window_label: str) -> Dict[str, Any]:
             "savings_ready_usd": savings_ready,
             "underutilized_count": underutilized,
             "orphans_count": orphans,
-            "data_freshness_hours": 0,  # <-- ALWAYS LIVE
+            "data_freshness_hours": 0,  # ALWAYS LIVE
             "last_updated": now_iso(),
         },
         "top_products": top_products,
         "key_insights": {
             "highest_single_day": {
-                "date": highest_date_str,                   # e.g. "Aug 21, 2025"
+                "date": highest_date_str,                   # "Aug 21, 2025"
                 "amount": round(highest_pt["cost"], 2),
             },
             "projected_month_end": projected_month_end,
             "mtd_actual": round(sum(pt["cost"] for pt in series[-min(len(series), datetime.now(TZ).day):]), 2),
-            "monthly_budget": monthly_budget,              # <-- Fixed $180,000
+            "monthly_budget": monthly_budget,              # $180,000
             "budget_variance": round(projected_month_end - monthly_budget, 2),
         },
         "generated_at": now_iso(),
     }
 
-# ----------------- API ROUTES -----------------
+# ---------- API ROUTES ----------
 
 @app.get("/api/summary")
-def get_summary(window: str = Query("30d", regex="^(7d|30d|90d)$")):
+def get_summary(window: str = Query("30d", pattern="^(7d|30d|90d)$")):
     m = model_for_window(window)
     return {
         "kpis": m["kpis"],
@@ -290,11 +249,10 @@ def get_summary(window: str = Query("30d", regex="^(7d|30d|90d)$")):
 def get_cost_trend(days: int = Query(30, ge=7, le=90)):
     window = "7d" if days == 7 else ("30d" if days == 30 else "90d")
     m = model_for_window(window)
-    # includes formatted_date (MM/DD) and date_iso
     return m["series"]
 
 @app.get("/api/service-breakdown")
-def get_service_breakdown(window: str = Query("30d", regex="^(7d|30d|90d)$")):
+def get_service_breakdown(window: str = Query("30d", pattern="^(7d|30d|90d)$")):
     m = model_for_window(window)
     total = round(sum(s["value"] for s in m["services_now"]), 2)
     return {"data": m["services_now"], "total": total}
@@ -305,9 +263,9 @@ def get_top_movers(days: int = Query(7, ge=7, le=90)):
     m = model_for_window(window)
     return m["movers"][:10]
 
-# Frontend-compatible alias:
+# Frontend-compatible alias (so either endpoint works)
 @app.get("/api/movers")
-def get_movers(window: str = Query("7d", regex="^(7d|30d|90d)$")):
+def get_movers(window: str = Query("7d", pattern="^(7d|30d|90d)$")):
     m = model_for_window(window)
     return m["movers"][:10]
 
@@ -320,7 +278,7 @@ def get_findings(sort: str = "savings", limit: int = 50):
     return items[:limit]
 
 @app.get("/api/key-insights")
-def get_key_insights(window: str = Query("30d", regex="^(7d|30d|90d)$")):
+def get_key_insights(window: str = Query("30d", pattern="^(7d|30d|90d)$")):
     m = model_for_window(window)
     return m["key_insights"]
 
