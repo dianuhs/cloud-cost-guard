@@ -42,7 +42,7 @@ const formatCurrency = (amount) =>
 const formatPercent = (percent) => {
   const p = Number(percent || 0);
   const sign = p >= 0 ? "+" : "";
-  return `${sign}${p.toFixed(1)}%";
+  return `${sign}${p.toFixed(1)}%`;
 };
 
 /* US date for blue “Last Updated” */
@@ -90,6 +90,27 @@ const getSeverityIcon = (severity) => {
   return <AlertTriangle className="h-4 w-4" />;
 };
 
+/* Normalize possible movers payloads */
+const normalizeMovers = (raw) => {
+  // Accept array or object with any of these keys
+  const candidates = Array.isArray(raw) ? raw :
+    raw?.movers || raw?.items || raw?.results || raw?.data || [];
+  const arr = Array.isArray(candidates) ? candidates : [];
+  return arr.map((m) => {
+    const prev = Number(m.prev_usd ?? m.previous_cost ?? 0);
+    const curr = Number(m.current_usd ?? m.current_cost ?? m.amount_usd ?? 0);
+    const changeAmt = Number.isFinite(m.change_amount) ? Number(m.change_amount) : (curr - prev);
+    const rawPct = m.change_percent ?? m.change_pct ?? (prev > 0 ? ((curr - prev) / prev) * 100 : (curr > 0 ? 100 : 0));
+    return {
+      service: m.service || m.name || "—",
+      previous_cost: prev,
+      current_cost: curr,
+      change_amount: Math.round(changeAmt * 100) / 100,
+      change_percent: Math.round(Number(rawPct || 0) * 10) / 10,
+    };
+  });
+};
+
 /* -------- Presentational components -------- */
 const KPICard = ({ title, value, change, icon: Icon, subtitle, dataFreshness }) => (
   <Card className="kpi-card hover:shadow-brand-md transition-all duration-200">
@@ -98,6 +119,7 @@ const KPICard = ({ title, value, change, icon: Icon, subtitle, dataFreshness }) 
       <div className="flex flex-col items-end">
         <Icon className="h-4 w-4 text-brand-light-muted" />
         {Number.isFinite(dataFreshness) && dataFreshness < 1 && <span className="text-xs text-green-600 mt-1">LIVE</span>}
+        {Number.isFinite(dataFreshness) && dataFreshness >= 1 && <span className="text-xs text-brand-light-muted mt-1">{dataFreshness}h</span>}
       </div>
     </CardHeader>
     <CardContent>
@@ -195,9 +217,7 @@ const TopMoversCard = ({ movers, windowLabel = "7d" }) => (
       <CardDescription className="text-brand-muted">Biggest cost changes in the last week</CardDescription>
     </CardHeader>
     <CardContent>
-      {(!movers || movers.length === 0) ? (
-        <div className="text-sm text-brand-muted">No movers detected in the last 7 days.</div>
-      ) : (
+      {Array.isArray(movers) && movers.length > 0 ? (
         <div className="space-y-3">
           {movers.slice(0, 6).map((m, i) => (
             <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-brand-bg/30">
@@ -219,6 +239,8 @@ const TopMoversCard = ({ movers, windowLabel = "7d" }) => (
             </div>
           ))}
         </div>
+      ) : (
+        <div className="text-sm text-brand-muted">No movers detected in the last 7 days.</div>
       )}
     </CardContent>
   </Card>
@@ -371,34 +393,6 @@ const Dashboard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateRange]);
 
-  const pickFirstArray = (obj) => {
-    if (Array.isArray(obj)) return obj;
-    if (!obj || typeof obj !== "object") return [];
-    // common wrappers: data, items, results, movers
-    for (const key of ["movers","items","results","data"]) {
-      if (Array.isArray(obj[key])) return obj[key];
-    }
-    // fallback: first array value in object
-    for (const v of Object.values(obj)) {
-      if (Array.isArray(v)) return v;
-    }
-    return [];
-  };
-
-  const normalizeMover = (m) => {
-    const prev = Number(m.prev_usd ?? m.previous_cost ?? m.prev ?? 0);
-    const curr = Number(m.current_usd ?? m.current_cost ?? m.curr ?? m.amount_usd ?? 0);
-    const delta = Number(m.change_usd ?? m.delta_usd ?? m.change_amount ?? (curr - prev) || 0);
-    const pct = Number(m.change_pct ?? m.delta_pct ?? m.change_percent ?? (prev > 0 ? ((curr - prev) / prev) * 100 : (curr > 0 ? 100 : 0)));
-    return {
-      service: m.service || m.name || m.product || "—",
-      previous_cost: prev,
-      current_cost: curr,
-      change_amount: Math.round(delta * 100) / 100,
-      change_percent: Math.round(pct * 10) / 10
-    };
-  };
-
   const loadAllData = async () => {
     try {
       setLoading(true);
@@ -407,7 +401,8 @@ const Dashboard = () => {
       const [sumRes, fndRes, mvRes] = await Promise.all([
         axios.get(`${API}/summary?window=${dateRange}`),
         axios.get(`${API}/findings?sort=savings&limit=50`),
-        axios.get(`${API}/movers?window=7d`)
+        // Try preferred path, fallback to /top-movers if needed (some backends use that)
+        axios.get(`${API}/movers?window=7d`).catch(() => axios.get(`${API}/top-movers?days=7`)),
       ]);
 
       const sum = sumRes.data || {};
@@ -416,20 +411,11 @@ const Dashboard = () => {
       setSummary(sum);
       setFindings(Array.isArray(fndRes.data) ? fndRes.data : []);
 
-      // ---- Robust Top Movers handling ----
-      let rawMovers = mvRes?.data;
-      let list = pickFirstArray(rawMovers);
-      if (!list.length) {
-        // try a fallback endpoint name if your backend uses a different route
-        try {
-          const fallback = await axios.get(`${API}/top-movers?days=7`);
-          list = pickFirstArray(fallback?.data);
-        } catch {}
-      }
-      const normalized = list.map(normalizeMover).filter(m => Number.isFinite(m.previous_cost) && Number.isFinite(m.current_cost));
-      setTopMovers(normalized);
+      // Normalize movers payload (handles array or nested containers)
+      const mvNormalized = normalizeMovers(mvRes?.data ?? []);
+      setTopMovers(mvNormalized);
 
-      // Service Breakdown from summary.top_products
+      // Build Service Breakdown from summary.top_products
       const total = products.reduce((acc, p) => acc + Number(p.amount_usd || p.amount || 0), 0);
       const palette = ["#8B6F47","#B5905C","#D8C3A5","#A8A7A7","#E98074","#C0B283","#F4E1D2","#E6B89C"];
       const breakdown = products.slice(0, 8).map((p, i) => {
@@ -438,38 +424,41 @@ const Dashboard = () => {
           name: p.product || p.name || p.service || p._id || "Other",
           value: val,
           percentage: total ? Number(((val / total) * 100).toFixed(1)) : 0,
-          fill: palette[i % palette.length]
+          fill: palette[i % palette.length],
         };
       });
       setServiceBreakdown({ data: breakdown, total });
 
-      // Daily Spend Trend
+      // Build a realistic Daily Spend Trend from total/avg with small noise, MM/DD labels
       const days = dateRange === "7d" ? 7 : dateRange === "90d" ? 90 : 30;
       const avg = total && days ? total / days : (kpis.total_30d_cost || 0) / Math.max(days,1);
       const series = Array.from({ length: days }, (_, i) => {
         const d = new Date();
         d.setDate(d.getDate() - (days - 1 - i));
+        // Mild realistic variance
         const jitter = avg * 0.06 * Math.sin(i / 2.7) + (avg * 0.03 * (Math.random() - 0.5));
         const amount = Math.max(0, avg + jitter);
-        return { formatted_date: format(d, "MMM d"), cost: amount };
+        return { formatted_date: format(d, "MM/dd"), cost: amount };
       });
       setCostTrend(series);
 
-      // Key Insights with fixed budget and pretty date label
+      // Key Insights derived from series + totals
+      // Highest day formatted as "Aug 21, 2025"
       const highestPt = series.reduce((m, pt, idx) => (pt.cost > m.amount ? { ...pt, idx } : m), { amount: 0, idx: -1 });
-      const highestDate = (() => {
-        const base = new Date();
-        base.setDate(base.getDate() - (series.length - 1 - highestPt.idx));
-        return format(base, "MMM d, yyyy");
-      })();
+      let highestDateLabel = "-";
+      if (highestPt.idx >= 0) {
+        const d = new Date();
+        d.setDate(d.getDate() - (series.length - 1 - highestPt.idx));
+        highestDateLabel = format(d, "MMM d, yyyy");
+      }
       const totalWindow = series.reduce((s, pt) => s + pt.cost, 0);
-      const monthlyBudget = 180000; // fixed as requested
+      const monthBudget = 180000; // fixed to your requested budget
       setKeyInsights({
-        highest_single_day: { date: highestDate, amount: highestPt.amount || 0 },
+        highest_single_day: { date: highestDateLabel, amount: highestPt.amount || 0 },
         projected_month_end: totalWindow,
         mtd_actual: totalWindow * (new Date().getDate() / Math.max(days, 1)),
-        monthly_budget: monthlyBudget,
-        budget_variance: totalWindow - monthlyBudget
+        monthly_budget: monthBudget,
+        budget_variance: totalWindow - monthBudget,
       });
 
     } catch (err) {
@@ -526,7 +515,7 @@ ${finding.suggested_action}
       const arr = Array.isArray(data) ? data : [];
       const headers = ["Title", "Type", "Severity", "Monthly Savings", "Resource ID", "Action"];
       const rows = arr.map((f) => [
-        f.title, f.type, f.severity, f.monthly_savings_usd_est, f.resource_id || "", f.suggested_action
+        f.title, f.type, f.severity, f.monthly_savings_usd_est, f.resource_id || "", f.suggested_action,
       ]);
       const csv = [headers, ...rows].map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
       const blob = new Blob([csv], { type: "text/csv" });
@@ -558,7 +547,7 @@ ${finding.suggested_action}
       <div className="min-h-screen bg-gradient-to-br from-brand-bg to-brand-light flex items-center justify-center">
         <Alert className="max-w-md alert-brand">
           <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
+        <AlertDescription>{error}</AlertDescription>
         </Alert>
       </div>
     );
@@ -732,7 +721,7 @@ ${finding.suggested_action}
                   {[
                     { type: "Under-utilized", count: kpis.underutilized_count, color: "bg-blue-500" },
                     { type: "Orphaned", count: kpis.orphans_count, color: "bg-yellow-500" },
-                    { type: "Idle", count: Array.isArray(findings) ? findings.filter(f => String(f.title).toLowerCase().includes("idle")).length : 0, color: "bg-red-500" }
+                    { type: "Idle", count: Array.isArray(findings) ? findings.filter(f => String(f.title).toLowerCase().includes("idle")).length : 0, color: "bg-red-500" },
                   ].map((it, i) => (
                     <div key={i} className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
