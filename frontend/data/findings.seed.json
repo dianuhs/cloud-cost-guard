@@ -1,0 +1,431 @@
+[
+  {
+    "finding_id": "seed-ec2-underutilized-01",
+    "title": "m5.2xlarge prod-web-server-01 under 8.3% CPU utilization",
+    "type": "compute",
+    "severity": "high",
+    "confidence": "high",
+    "monthly_savings_usd_est": 6654.40,
+    "risk_level": "Medium",
+    "implementation_time": "2-4 hours",
+    "suggested_action": "Downsize to m5.large or enable auto-scaling on the ASG with CPU and request-rate targets.",
+    "commands": [
+      "aws ec2 describe-instances --instance-ids i-0a1b2c3d4e5f6789a --region us-east-1",
+      "aws autoscaling update-auto-scaling-group --auto-scaling-group-name prod-web-asg --desired-capacity 2"
+    ],
+    "last_analyzed": "2025-08-28T22:37:00Z",
+    "evidence": {
+      "resource_id": "i-0a1b2c3d4e5f6789a",
+      "region": "us-east-1",
+      "instance_type": "m5.2xlarge",
+      "avg_cpu_percent_30d": 8.3,
+      "uptime_hours_30d": 718
+    },
+    "methodology": "30d CloudWatch CPU, network, and load metrics vs. instance right-sizing guidance."
+  },
+  {
+    "finding_id": "seed-lambda-anomaly-plus-6459",
+    "title": "Cost anomaly in Lambda: +$64.59 daily spike",
+    "type": "anomaly",
+    "severity": "high",
+    "confidence": "high",
+    "monthly_savings_usd_est": 1937.70,
+    "risk_level": "Medium",
+    "implementation_time": "2-6 hours investigation",
+    "suggested_action": "Identify function(s) with sudden invocations or duration growth; add concurrency limits and alerts.",
+    "commands": [
+      "aws ce get-cost-and-usage --time-period Start=2025-08-23,End=2025-08-24 --granularity DAILY --metrics BlendedCost --group-by Type=DIMENSION,Key=SERVICE",
+      "aws logs filter-log-events --log-group-name /aws/lambda/<function> --start-time <ts> --end-time <ts>"
+    ],
+    "last_analyzed": "2025-08-28T22:37:00Z",
+    "evidence": {
+      "service": "Lambda",
+      "delta_usd_day": 64.59,
+      "functions_affected": 3
+    },
+    "methodology": "Daily cost diffs with 7-day rolling baseline; outlier flagged at >3σ."
+  },
+  {
+    "finding_id": "seed-ebs-unattached-467gb",
+    "title": "Unattached EBS volume temp-migration-vol (467GB) in us-west-2",
+    "type": "storage",
+    "severity": "medium",
+    "confidence": "high",
+    "monthly_savings_usd_est": 46.70,
+    "risk_level": "Low",
+    "implementation_time": "30 minutes",
+    "suggested_action": "Snapshot if needed, then delete the unattached volume.",
+    "commands": [
+      "aws ec2 describe-volumes --volume-ids vol-0555666777888999a --region us-west-2",
+      "aws ec2 delete-volume --volume-id vol-0555666777888999a --region us-west-2"
+    ],
+    "last_analyzed": "2025-08-28T22:37:00Z",
+    "evidence": {
+      "resource_id": "vol-0555666777888999a",
+      "region": "us-west-2",
+      "size_gb": 467,
+      "attached": false
+    },
+    "methodology": "Inventory diff with attachment state + gp2/gp3 price model."
+  },
+  {
+    "finding_id": "seed-eip-unused-use1",
+    "title": "Unused Elastic IP in us-east-1 (2128h unused)",
+    "type": "network",
+    "severity": "low",
+    "confidence": "high",
+    "monthly_savings_usd_est": 43.80,
+    "risk_level": "Low",
+    "implementation_time": "15 minutes",
+    "suggested_action": "Release unused EIP to stop hourly charges.",
+    "commands": [
+      "aws ec2 describe-addresses --allocation-ids eipalloc-0a1b2c3d4e5f6 --region us-east-1",
+      "aws ec2 release-address --allocation-id eipalloc-0a1b2c3d4e5f6 --region us-east-1"
+    ],
+    "last_analyzed": "2025-08-28T22:37:00Z",
+    "evidence": {
+      "allocation_id": "eipalloc-0a1b2c3d4e5f6",
+      "region": "us-east-1",
+      "unused_hours_30d": 2128
+    },
+    "methodology": "EC2 address allocation inventory and association status."
+  },
+  {
+    "finding_id": "seed-eip-unused-usw2",
+    "title": "Unused Elastic IP in us-west-2 (1459h unused)",
+    "type": "network",
+    "severity": "low",
+    "confidence": "high",
+    "monthly_savings_usd_est": 43.80,
+    "risk_level": "Low",
+    "implementation_time": "15 minutes",
+    "suggested_action": "Release unused Elastic IP to stop hourly charges.",
+    "commands": [
+      "aws ec2 describe-addresses --allocation-ids eipalloc-0x9y8z7a6b5c4d --region us-west-2",
+      "aws ec2 release-address --allocation-id eipalloc-0x9y8z7a6b5c4d --region us-west-2"
+    ],
+    "last_analyzed": "2025-08-28T22:37:00Z",
+    "evidence": {
+      "allocation_id": "eipalloc-0x9y8z7a6b5c4d",
+      "region": "us-west-2",
+      "unused_hours_30d": 1459
+    },
+    "methodology": "EC2 address allocation inventory and association status."
+  },
+  {
+    "finding_id": "seed-ebs-unattached-363gb",
+    "title": "Unattached EBS volume backup-volume-prod (363GB) in us-east-1",
+    "type": "storage",
+    "severity": "medium",
+    "confidence": "high",
+    "monthly_savings_usd_est": 36.30,
+    "risk_level": "Low",
+    "implementation_time": "30 minutes",
+    "suggested_action": "Create snapshot if needed, then delete unused volume.",
+    "commands": [
+      "aws ec2 describe-volumes --volume-ids vol-0123456789abcdef0 --region us-east-1",
+      "aws ec2 delete-volume --volume-id vol-0123456789abcdef0 --region us-east-1"
+    ],
+    "last_analyzed": "2025-08-28T22:37:00Z",
+    "evidence": {
+      "resource_id": "vol-0123456789abcdef0",
+      "region": "us-east-1",
+      "size_gb": 363,
+      "attached": false
+    },
+    "methodology": "Inventory diff with attachment state + gp2/gp3 price model."
+  },
+  {
+    "finding_id": "seed-ebs-unattached-311gb",
+    "title": "Unattached EBS volume legacy-data-volume (311GB) in us-east-1",
+    "type": "storage",
+    "severity": "medium",
+    "confidence": "high",
+    "monthly_savings_usd_est": 31.10,
+    "risk_level": "Low",
+    "implementation_time": "30 minutes",
+    "suggested_action": "Create snapshot if needed, then delete unused volume.",
+    "commands": [
+      "aws ec2 describe-volumes --volume-ids vol-0987654321fedcba0 --region us-east-1",
+      "aws ec2 delete-volume --volume-id vol-0987654321fedcba0 --region us-east-1"
+    ],
+    "last_analyzed": "2025-08-28T22:37:00Z",
+    "evidence": {
+      "resource_id": "vol-0987654321fedcba0",
+      "region": "us-east-1",
+      "size_gb": 311,
+      "attached": false
+    },
+    "methodology": "Inventory diff with attachment state + gp2/gp3 price model."
+  },
+  {
+    "finding_id": "seed-elb-low-traffic-legacy",
+    "title": "Load balancer legacy-web-balancer handling minimal traffic in us-east-1",
+    "type": "network",
+    "severity": "medium",
+    "confidence": "high",
+    "monthly_savings_usd_est": 31.00,
+    "risk_level": "Medium",
+    "implementation_time": "1-3 hours",
+    "suggested_action": "Evaluate if load balancer is needed or consolidate with other LBs.",
+    "commands": [
+      "aws elbv2 describe-load-balancers --names legacy-web-balancer --region us-east-1",
+      "aws elbv2 delete-load-balancer --load-balancer-arn <arn>"
+    ],
+    "last_analyzed": "2025-08-28T22:37:00Z",
+    "evidence": {
+      "lb_name": "legacy-web-balancer",
+      "region": "us-east-1",
+      "avg_rps": 0.2
+    },
+    "methodology": "ALB/NLB CloudWatch RequestCount + hourly pricing model."
+  },
+  {
+    "finding_id": "seed-cloudwatch-anomaly-neg-64-11",
+    "title": "Cost anomaly in CloudWatch: -$64.11 daily spike",
+    "type": "anomaly",
+    "severity": "high",
+    "confidence": "high",
+    "monthly_savings_usd_est": 0.0,
+    "risk_level": "Medium",
+    "implementation_time": "2-6 hours investigation",
+    "suggested_action": "Investigate root cause of cost spike and implement controls.",
+    "commands": [
+      "aws ce get-cost-and-usage --time-period Start=2025-08-24,End=2025-08-25 --granularity DAILY --metrics BlendedCost --group-by Type=DIMENSION,Key=SERVICE"
+    ],
+    "last_analyzed": "2025-08-28T22:37:00Z",
+    "evidence": {
+      "service": "CloudWatch",
+      "delta_usd_day": -64.11
+    },
+    "methodology": "Daily cost diffs vs. baseline; negative spike noted."
+  },
+  {
+    "finding_id": "seed-ebs-anomaly-neg-165-93",
+    "title": "Cost anomaly in EBS: -$165.93 daily spike",
+    "type": "anomaly",
+    "severity": "high",
+    "confidence": "medium",
+    "monthly_savings_usd_est": 0.0,
+    "risk_level": "Medium",
+    "implementation_time": "2-6 hours investigation",
+    "suggested_action": "Investigate root cause of cost spike and implement controls.",
+    "commands": [
+      "aws ce get-cost-and-usage --time-period Start=2025-08-25,End=2025-08-26 --granularity DAILY --metrics BlendedCost --group-by Type=DIMENSION,Key=SERVICE"
+    ],
+    "last_analyzed": "2025-08-28T22:37:00Z",
+    "evidence": {
+      "service": "EBS",
+      "delta_usd_day": -165.93
+    },
+    "methodology": "Daily cost diffs vs. baseline; negative spike noted."
+  },
+  {
+    "finding_id": "seed-ec2-anomaly-neg-1021-08",
+    "title": "Cost anomaly in EC2-Instance: -$1021.08 daily spike",
+    "type": "anomaly",
+    "severity": "critical",
+    "confidence": "medium",
+    "monthly_savings_usd_est": 0.0,
+    "risk_level": "Medium",
+    "implementation_time": "2-6 hours investigation",
+    "suggested_action": "Investigate root cause of cost spike and implement controls.",
+    "commands": [
+      "aws ce get-cost-and-usage --time-period Start=2025-08-25,End=2025-08-26 --granularity DAILY --metrics BlendedCost --group-by Type=DIMENSION,Key=SERVICE"
+    ],
+    "last_analyzed": "2025-08-28T22:37:00Z",
+    "evidence": {
+      "service": "EC2-Instance",
+      "delta_usd_day": -1021.08
+    },
+    "methodology": "Daily cost diffs vs. baseline; negative spike noted."
+  },
+  {
+    "finding_id": "seed-elb-anomaly-neg-72-13",
+    "title": "Cost anomaly in ELB: -$72.13 daily spike",
+    "type": "anomaly",
+    "severity": "high",
+    "confidence": "medium",
+    "monthly_savings_usd_est": 0.0,
+    "risk_level": "Medium",
+    "implementation_time": "2-6 hours investigation",
+    "suggested_action": "Investigate root cause of cost spike and implement controls.",
+    "commands": [
+      "aws ce get-cost-and-usage --time-period Start=2025-08-24,End=2025-08-25 --granularity DAILY --metrics BlendedCost --group-by Type=DIMENSION,Key=SERVICE"
+    ],
+    "last_analyzed": "2025-08-28T22:37:00Z",
+    "evidence": {
+      "service": "ELB",
+      "delta_usd_day": -72.13
+    },
+    "methodology": "Daily cost diffs vs. baseline; negative spike noted."
+  },
+  {
+    "finding_id": "seed-lambda-anomaly-neg-32-53",
+    "title": "Cost anomaly in Lambda: -$32.53 daily spike",
+    "type": "anomaly",
+    "severity": "high",
+    "confidence": "high",
+    "monthly_savings_usd_est": 0.0,
+    "risk_level": "Medium",
+    "implementation_time": "2-6 hours investigation",
+    "suggested_action": "Investigate root cause of cost spike and implement controls.",
+    "commands": [
+      "aws ce get-cost-and-usage --time-period Start=2025-08-24,End=2025-08-25 --granularity DAILY --metrics BlendedCost --group-by Type=DIMENSION,Key=SERVICE"
+    ],
+    "last_analyzed": "2025-08-28T22:37:00Z",
+    "evidence": {
+      "service": "Lambda",
+      "delta_usd_day": -32.53
+    },
+    "methodology": "Daily cost diffs vs. baseline; negative spike noted."
+  },
+  {
+    "finding_id": "seed-lambda-anomaly-neg-38-05",
+    "title": "Cost anomaly in Lambda: -$38.05 daily spike",
+    "type": "anomaly",
+    "severity": "high",
+    "confidence": "high",
+    "monthly_savings_usd_est": 0.0,
+    "risk_level": "Medium",
+    "implementation_time": "2-6 hours investigation",
+    "suggested_action": "Investigate root cause of cost spike and implement controls.",
+    "commands": [
+      "aws ce get-cost-and-usage --time-period Start=2025-08-25,End=2025-08-26 --granularity DAILY --metrics BlendedCost --group-by Type=DIMENSION,Key=SERVICE"
+    ],
+    "last_analyzed": "2025-08-28T22:37:00Z",
+    "evidence": {
+      "service": "Lambda",
+      "delta_usd_day": -38.05
+    },
+    "methodology": "Daily cost diffs vs. baseline; negative spike noted."
+  },
+  {
+    "finding_id": "seed-natgw-anomaly-neg-63-28",
+    "title": "Cost anomaly in NAT Gateway: -$63.28 daily spike",
+    "type": "anomaly",
+    "severity": "high",
+    "confidence": "medium",
+    "monthly_savings_usd_est": 0.0,
+    "risk_level": "Medium",
+    "implementation_time": "2-6 hours investigation",
+    "suggested_action": "Investigate root cause of cost spike and implement controls.",
+    "commands": [
+      "aws ce get-cost-and-usage --time-period Start=2025-08-24,End=2025-08-25 --granularity DAILY --metrics BlendedCost --group-by Type=DIMENSION,Key=SERVICE"
+    ],
+    "last_analyzed": "2025-08-28T22:37:00Z",
+    "evidence": {
+      "service": "NAT Gateway",
+      "delta_usd_day": -63.28
+    },
+    "methodology": "Daily cost diffs vs. baseline; negative spike noted."
+  },
+  {
+    "finding_id": "seed-s3-anomaly-neg-86-95",
+    "title": "Cost anomaly in S3: -$86.95 daily spike",
+    "type": "anomaly",
+    "severity": "high",
+    "confidence": "high",
+    "monthly_savings_usd_est": 0.0,
+    "risk_level": "Medium",
+    "implementation_time": "2-6 hours investigation",
+    "suggested_action": "Investigate root cause of cost spike and implement controls.",
+    "commands": [
+      "aws ce get-cost-and-usage --time-period Start=2025-08-24,End=2025-08-25 --granularity DAILY --metrics BlendedCost --group-by Type=DIMENSION,Key=SERVICE"
+    ],
+    "last_analyzed": "2025-08-28T22:37:00Z",
+    "evidence": {
+      "service": "S3",
+      "delta_usd_day": -86.95
+    },
+    "methodology": "Daily cost diffs vs. baseline; negative spike noted."
+  },
+  {
+    "finding_id": "seed-rds-readreplica-idle",
+    "title": "Idle RDS read replica for production database",
+    "type": "database",
+    "severity": "medium",
+    "confidence": "high",
+    "monthly_savings_usd_est": 820.40,
+    "risk_level": "Medium",
+    "implementation_time": "1-2 hours",
+    "suggested_action": "Remove or downsize the replica; enable performance insights before removal.",
+    "commands": [
+      "aws rds describe-db-instances --db-instance-identifier prod-db-replica-1",
+      "aws rds delete-db-instance --db-instance-identifier prod-db-replica-1 --skip-final-snapshot"
+    ],
+    "last_analyzed": "2025-08-28T22:37:00Z",
+    "evidence": {
+      "db_instance": "prod-db-replica-1",
+      "replica_lag_seconds": 0,
+      "avg_cpu_percent_30d": 2.1
+    },
+    "methodology": "30d CPU/IO + replication metrics vs. workload traffic."
+  },
+  {
+    "finding_id": "seed-s3-lifecycle-missing-logs",
+    "title": "S3 bucket logs-archive missing IA/Glacier transition policy",
+    "type": "storage",
+    "severity": "medium",
+    "confidence": "high",
+    "monthly_savings_usd_est": 112.30,
+    "risk_level": "Low",
+    "implementation_time": "45 minutes",
+    "suggested_action": "Add lifecycle policy to move objects >30d to S3 IA and >90d to Glacier.",
+    "commands": [
+      "aws s3api put-bucket-lifecycle-configuration --bucket logs-archive --lifecycle-configuration file://lifecycle.json"
+    ],
+    "last_analyzed": "2025-08-28T22:37:00Z",
+    "evidence": {
+      "bucket": "logs-archive",
+      "objects_over_30d": 3800000,
+      "lifecycle_rules_present": false
+    },
+    "methodology": "Bucket size by storage class + lifecycle rules audit."
+  },
+  {
+    "finding_id": "seed-nat-low-traffic",
+    "title": "NAT Gateway with minimal traffic in us-east-1",
+    "type": "network",
+    "severity": "medium",
+    "confidence": "medium",
+    "monthly_savings_usd_est": 145.00,
+    "risk_level": "Medium",
+    "implementation_time": "1-3 hours",
+    "suggested_action": "Replace with NAT instance for low-throughput workloads; add egress allowlist.",
+    "commands": [
+      "aws ec2 describe-nat-gateways --filter Name=state,Values=available",
+      "aws ec2 terminate-nat-gateway --nat-gateway-id <id>"
+    ],
+    "last_analyzed": "2025-08-28T22:37:00Z",
+    "evidence": {
+      "region": "us-east-1",
+      "avg_bytes_out_per_hour": 12000000
+    },
+    "methodology": "30d NAT data processed/hrs vs. fixed hourly pricing."
+  },
+  {
+    "finding_id": "seed-ri-m5-4xlarge",
+    "title": "Reserved Instance opportunity for m5.4xlarge workloads",
+    "type": "compute",
+    "severity": "medium",
+    "confidence": "high",
+    "monthly_savings_usd_est": 127.50,
+    "risk_level": "Low",
+    "implementation_time": "4-6 hours",
+    "suggested_action": "Consider 1-year Reserved Instances for consistent 24/7 usage patterns.",
+    "commands": [
+      "aws ec2 describe-reserved-instances-offerings --instance-type m5.4xlarge --region us-east-1",
+      "aws ec2 purchase-reserved-instances-offering --reserved-instances-offering-id <offering-id> --instance-count 1"
+    ],
+    "last_analyzed": "2025-08-28T15:37:00Z",
+    "evidence": {
+      "resource_id": "i-0x9y8z7a6b5c4dabc",
+      "region": "us-east-1",
+      "instance_type": "m5.4xlarge",
+      "usage_pattern": "24/7 production workloads",
+      "uptime_percentage": 99.2
+    },
+    "methodology": "Analysis of 30-day usage patterns and AWS Reserved Instance pricing comparison."
+  }
+]
