@@ -1,17 +1,13 @@
 /**
- * Vercel Serverless Function (Root = frontend/): /api/findings
- * CommonJS version (compatible with Vercel Node runtime)
- * - Statically requires ../data/findings.seed.json so it gets bundled.
- * - Supports ?sort=savings and ?limit=NUMBER
+ * /api/findings
  */
-
 function sortFindings(findings, sortKey) {
   if (!sortKey) return findings;
   if (sortKey === 'savings') {
     return [...findings].sort((a, b) => {
       const va = Number((a && a.monthly_savings_usd_est) || 0);
       const vb = Number((b && b.monthly_savings_usd_est) || 0);
-      return vb - va; // desc
+      return vb - va;
     });
   }
   return findings;
@@ -26,14 +22,10 @@ function limitFindings(findings, limit) {
 module.exports = async (req, res) => {
   let findings = [];
   try {
-    const seed = require('../data/findings.seed.json'); // bundled at build
-    if (Array.isArray(seed)) {
-      findings = seed;
-    } else if (seed && Array.isArray(seed.data)) {
-      findings = seed.data;
-    } else {
-      throw new Error('Seed JSON must be an array or an object with a top-level "data" array.');
-    }
+    const seed = require('../data/findings.seed.json');
+    if (Array.isArray(seed)) findings = seed;
+    else if (seed && Array.isArray(seed.data)) findings = seed.data;
+    else throw new Error('Seed JSON must be an array or an object with a top-level "data" array.');
   } catch (err) {
     const hint = {
       finding_id: 'seed-load-error',
@@ -62,5 +54,4 @@ module.exports = async (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   res.status(200).json(findings);
 };
-fix: commonjs findings api,
 
