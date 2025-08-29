@@ -1,21 +1,16 @@
 /**
  * Vercel Serverless Function (Root = frontend/): /api/findings
- * CommonJS version (safer on Vercel): no runtime config, no ESM imports.
- * Statically requires ../data/findings.seed.json so it gets bundled.
- * Supports:
- *   - ?sort=savings   (desc by monthly_savings_usd_est)
- *   - ?limit=NUMBER
- *
- * Place this file at: frontend/api/findings.js
- * Seed file at:       frontend/data/findings.seed.json
+ * CommonJS version (compatible with Vercel Node runtime)
+ * - Statically requires ../data/findings.seed.json so it gets bundled.
+ * - Supports ?sort=savings and ?limit=NUMBER
  */
 
 function sortFindings(findings, sortKey) {
   if (!sortKey) return findings;
   if (sortKey === 'savings') {
     return [...findings].sort((a, b) => {
-      const va = Number(a && a.monthly_savings_usd_est || 0);
-      const vb = Number(b && b.monthly_savings_usd_est || 0);
+      const va = Number((a && a.monthly_savings_usd_est) || 0);
+      const vb = Number((b && b.monthly_savings_usd_est) || 0);
       return vb - va; // desc
     });
   }
@@ -31,8 +26,7 @@ function limitFindings(findings, limit) {
 module.exports = async (req, res) => {
   let findings = [];
   try {
-    // Statically include JSON so the bundler packages it
-    const seed = require('../data/findings.seed.json');
+    const seed = require('../data/findings.seed.json'); // bundled at build
     if (Array.isArray(seed)) {
       findings = seed;
     } else if (seed && Array.isArray(seed.data)) {
@@ -48,7 +42,7 @@ module.exports = async (req, res) => {
       service: 'system',
       severity: 'warning',
       monthly_savings_usd_est: 0,
-      details: String(err && err.message || err),
+      details: String((err && err.message) || err),
       next_steps: [
         'Confirm the file exists at frontend/data/findings.seed.json and is committed',
         'Ensure valid JSON (array or { "data": [...] })',
@@ -59,7 +53,6 @@ module.exports = async (req, res) => {
     return res.status(200).json([hint]);
   }
 
-  // Query params
   const sortParam = req.query && req.query.sort;
   const limitParam = req.query && req.query.limit;
 
