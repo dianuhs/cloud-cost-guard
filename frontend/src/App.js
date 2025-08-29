@@ -61,26 +61,6 @@ const formatTimestamp = (ts) => {
   return `${mm}/${dd}/${yyyy} ${hh}:${min} ${ampm}`;
 };
 
-/* Pretty month date for Key Insights (e.g., "Aug 21, 2025") */
-const formatPrettyDate = (input) => {
-  if (!input) return "-";
-  if (/[A-Za-z]{3}\s+\d{1,2},\s+\d{4}/.test(input)) return input; // already pretty
-  const parts = String(input).split("/");
-  if (parts.length >= 2) {
-    const [mm, dd, yyyyRaw] = parts;
-    const yyyy = (yyyyRaw && yyyyRaw.length === 4) ? yyyyRaw : String(new Date().getFullYear());
-    const d = new Date(`${yyyy}-${String(mm).padStart(2,"0")}-${String(dd).padStart(2,"0")}T00:00:00`);
-    if (!isNaN(d)) {
-      return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-    }
-  }
-  const d = new Date(input);
-  if (!isNaN(d)) {
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  }
-  return input;
-};
-
 const getConfidenceColor = (confidence) => ({
   very_high: "text-green-700 bg-green-50",
   high: "text-green-600 bg-green-50",
@@ -117,8 +97,8 @@ const KPICard = ({ title, value, change, icon: Icon, subtitle, dataFreshness }) 
       <CardTitle className="text-sm font-medium text-brand-muted">{title}</CardTitle>
       <div className="flex flex-col items-end">
         <Icon className="h-4 w-4 text-brand-light-muted" />
+        {/* Removed small “1h” chip to avoid confusion */}
         {Number.isFinite(dataFreshness) && dataFreshness < 1 && <span className="text-xs text-green-600 mt-1">LIVE</span>}
-        {Number.isFinite(dataFreshness) && dataFreshness >= 1 && <span className="text-xs text-brand-light-muted mt-1">{dataFreshness}h</span>}
       </div>
     </CardHeader>
     <CardContent>
@@ -213,36 +193,31 @@ const TopMoversCard = ({ movers, windowLabel = "7d" }) => (
         <TrendingUpIcon className="h-5 w-5" />
         Top Movers ({windowLabel})
       </CardTitle>
-      {/* Subtitle text fixed per request */}
       <CardDescription className="text-brand-muted">Biggest cost changes in the last week</CardDescription>
     </CardHeader>
     <CardContent>
-      {!movers || movers.length === 0 ? (
-        <div className="text-sm text-brand-muted">No movers detected in the last 7 days.</div>
-      ) : (
-        <div className="space-y-3">
-          {movers.slice(0, 6).map((m, i) => (
-            <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-brand-bg/30">
-              <div className="flex items-center gap-3">
-                {/* Green = cost down (good). Red = cost up (bad). */}
-                <div className={`w-2 h-8 rounded ${Number(m.change_amount) < 0 ? "bg-green-500" : "bg-red-500"}`} />
-                <div>
-                  <div className="font-medium text-brand-ink text-sm">{m.service}</div>
-                  <div className="text-xs text-brand-muted">{formatCurrency(m.previous_cost)} → {formatCurrency(m.current_cost)}</div>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className={`font-semibold text-sm ${Number(m.change_amount) < 0 ? "text-green-600" : "text-red-600"}`}>
-                  {Number(m.change_amount) >= 0 ? "+" : ""}{formatCurrency(m.change_amount)}
-                </div>
-                <div className={`text-xs ${Number(m.change_amount) < 0 ? "text-green-500" : "text-red-500"}`}>
-                  {Number(m.change_percent) >= 0 ? "+" : ""}{m.change_percent}%
-                </div>
+      <div className="space-y-3">
+        {movers.slice(0, 6).map((m, i) => (
+          <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-brand-bg/30">
+            <div className="flex items-center gap-3">
+              {/* Red for increases, green for decreases */}
+              <div className={`w-2 h-8 rounded ${m.change_amount >= 0 ? "bg-red-500" : "bg-green-500"}`} />
+              <div>
+                <div className="font-medium text-brand-ink text-sm">{m.service}</div>
+                <div className="text-xs text-brand-muted">{formatCurrency(m.previous_cost)} → {formatCurrency(m.current_cost)}</div>
               </div>
             </div>
-          ))}
-        </div>
-      )}
+            <div className="text-right">
+              <div className={`font-semibold text-sm ${m.change_amount >= 0 ? "text-red-600" : "text-green-600"}`}>
+                {m.change_amount >= 0 ? "+" : ""}{formatCurrency(m.change_amount)}
+              </div>
+              <div className={`text-xs ${m.change_amount >= 0 ? "text-red-500" : "text-green-500"}`}>
+                {m.change_percent >= 0 ? "+" : ""}{m.change_percent}%
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </CardContent>
   </Card>
 );
@@ -257,9 +232,7 @@ const KeyInsightsCard = ({ insights }) => (
       <div className="space-y-4">
         <div>
           <div className="text-sm text-brand-muted">Highest Single Day</div>
-          <div className="font-semibold text-brand-ink">
-            {formatPrettyDate(insights?.highest_single_day?.date)}
-          </div>
+          <div className="font-semibold text-brand-ink">{insights?.highest_single_day?.date || "-"}</div>
           <div className="text-lg font-bold text-brand-accent">{formatCurrency(insights?.highest_single_day?.amount || 0)}</div>
         </div>
         <Separator />
@@ -273,9 +246,9 @@ const KeyInsightsCard = ({ insights }) => (
           <div className="text-sm text-brand-muted">Budget Performance</div>
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm">MTD: {formatCurrency(insights?.mtd_actual || 0)}</span>
-            <span className="text-sm">Budget: {formatCurrency(Number(insights?.monthly_budget ?? 180000))}</span>
+            <span className="text-sm">Budget: {formatCurrency(insights?.monthly_budget || 0)}</span>
           </div>
-          <Progress value={Math.min(((insights?.mtd_actual || 0) / (Number(insights?.monthly_budget ?? 180000) || 1)) * 100, 100)} className="h-3" />
+          <Progress value={Math.min(((insights?.mtd_actual || 0) / (insights?.monthly_budget || 1)) * 100, 100)} className="h-3" />
           <div className="flex justify-between text-xs mt-2">
             <span className="text-brand-muted">Projected: {formatCurrency(insights?.projected_month_end || 0)}</span>
             <span className={`font-semibold ${Number(insights?.budget_variance || 0) >= 0 ? "text-red-600" : "text-green-600"}`}>
@@ -379,28 +352,6 @@ const ProductTable = ({ products }) => (
   </div>
 );
 
-/* -------- Helpers: normalize movers payloads from different endpoints -------- */
-const normalizeMovers = (raw) => {
-  const arr = Array.isArray(raw) ? raw : (Array.isArray(raw?.items) ? raw.items : []);
-  return arr.map((m) => {
-    const prev = Number(m.prev_usd ?? m.previous_cost ?? 0);
-    const curr = Number(m.current_usd ?? m.current_cost ?? m.amount_usd ?? 0);
-    const changeAmt = Number(
-      m.change_usd ?? m.delta_usd ?? m.change_amount ?? (curr - prev)
-    );
-    const rawPct = m.change_pct ?? m.delta_pct ?? m.change_percent ??
-      (prev > 0 ? ((curr - prev) / prev) * 100 : (curr > 0 ? 100 : 0));
-    const changePct = Math.round(Number(rawPct || 0) * 10) / 10;
-    return {
-      service: m.service || m.name || "—",
-      previous_cost: prev,
-      current_cost: curr,
-      change_amount: changeAmt,
-      change_percent: changePct
-    };
-  });
-};
-
 /* -------- Main -------- */
 const Dashboard = () => {
   const [summary, setSummary] = useState(null);
@@ -418,43 +369,47 @@ const Dashboard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateRange]);
 
+  const normalizeMovers = (arr = []) => {
+    return arr.map((m) => {
+      const prev = Number(m.prev_usd ?? m.previous_cost ?? 0);
+      const curr = Number(m.current_usd ?? m.current_cost ?? m.amount_usd ?? 0);
+      const deltaAmt = Number.isFinite(m.change_amount) ? Number(m.change_amount) : (curr - prev);
+      const rawPct = (m.change_percent ?? m.delta_pct);
+      const pct = Number.isFinite(rawPct)
+        ? Number(rawPct)
+        : (prev > 0 ? ((curr - prev) / prev) * 100 : (curr > 0 ? 100 : 0));
+      return {
+        service: m.service || m.name || "—",
+        previous_cost: prev,
+        current_cost: curr,
+        change_amount: Math.round(deltaAmt * 100) / 100,
+        change_percent: Math.round(pct * 10) / 10,
+      };
+    }).filter((m) => Number.isFinite(m.previous_cost) && Number.isFinite(m.current_cost));
+  };
+
   const loadAllData = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const [sumRes, fndRes] = await Promise.all([
+      const [sumRes, fndRes, mvRes] = await Promise.all([
         axios.get(`${API}/summary?window=${dateRange}`),
-        axios.get(`${API}/findings?sort=savings&limit=50`)
+        axios.get(`${API}/findings?sort=savings&limit=50`),
+        axios.get(`${API}/movers?window=7d`)
       ]);
-
-      // Try primary movers endpoint
-      let moversData = [];
-      try {
-        const mvRes = await axios.get(`${API}/movers?window=7d`);
-        moversData = normalizeMovers(mvRes.data);
-      } catch {
-        moversData = [];
-      }
-
-      // Fallback to alternate endpoint if empty
-      if (!Array.isArray(moversData) || moversData.length === 0) {
-        try {
-          const altRes = await axios.get(`${API}/top-movers?days=7`);
-          moversData = normalizeMovers(altRes.data);
-        } catch {
-          // keep empty
-        }
-      }
 
       const sum = sumRes.data || {};
       const kpis = sum.kpis || {};
       const products = Array.isArray(sum.top_products) ? sum.top_products : [];
       setSummary(sum);
       setFindings(Array.isArray(fndRes.data) ? fndRes.data : []);
-      setTopMovers(Array.isArray(moversData) ? moversData : []);
 
-      // Service Breakdown from summary.top_products
+      // --- MOVERS (normalized) ---
+      const normalized = normalizeMovers(Array.isArray(mvRes.data) ? mvRes.data : []);
+      setTopMovers(normalized);
+
+      // --- Service Breakdown from summary.top_products ---
       const total = products.reduce((acc, p) => acc + Number(p.amount_usd || p.amount || 0), 0);
       const palette = ["#8B6F47","#B5905C","#D8C3A5","#A8A7A7","#E98074","#C0B283","#F4E1D2","#E6B89C"];
       const breakdown = products.slice(0, 8).map((p, i) => {
@@ -468,7 +423,7 @@ const Dashboard = () => {
       });
       setServiceBreakdown({ data: breakdown, total });
 
-      // Daily Spend Trend (synthetic but realistic) + MM/DD labels
+      // --- Daily Spend Trend (MM/dd labels) ---
       const days = dateRange === "7d" ? 7 : dateRange === "90d" ? 90 : 30;
       const avg = total && days ? total / days : (kpis.total_30d_cost || 0) / Math.max(days,1);
       const series = Array.from({ length: days }, (_, i) => {
@@ -476,24 +431,23 @@ const Dashboard = () => {
         d.setDate(d.getDate() - (days - 1 - i));
         const jitter = avg * 0.06 * Math.sin(i / 2.7) + (avg * 0.03 * (Math.random() - 0.5));
         const amount = Math.max(0, avg + jitter);
-        return { formatted_date: format(d, "MM/dd"), cost: amount };
+        return { formatted_date: format(d, "MM/dd"), dateISO: d.toISOString(), cost: amount };
       });
       setCostTrend(series);
 
-      // Key Insights
+      // --- Key Insights ---
       const highest = series.reduce(
-        (m, pt) => (pt.cost > m.amount ? { date: pt.formatted_date, amount: pt.cost } : m),
+        (m, pt) => (pt.cost > m.amount ? { date: format(new Date(pt.dateISO), "MMM d, yyyy"), amount: pt.cost } : m),
         { date: "-", amount: 0 }
       );
       const totalWindow = series.reduce((s, pt) => s + pt.cost, 0);
-      const FIXED_BUDGET = 180000;
-
+      const monthBudget = 180000; // locked per request
       setKeyInsights({
         highest_single_day: highest,
         projected_month_end: totalWindow,
         mtd_actual: totalWindow * (new Date().getDate() / Math.max(days, 1)),
-        monthly_budget: FIXED_BUDGET,
-        budget_variance: totalWindow - FIXED_BUDGET
+        monthly_budget: monthBudget,
+        budget_variance: totalWindow - monthBudget
       });
 
     } catch (err) {
