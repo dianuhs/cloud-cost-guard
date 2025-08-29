@@ -35,6 +35,15 @@ import {
 const API = "/api";
 
 /* -------- Utils -------- */
+const toNumber = (v) => {
+  if (typeof v === "number") return v;
+  if (typeof v === "string") {
+    const n = Number(v.replace?.(/[^0-9\.\-]/g, "") ?? v);
+    return Number.isFinite(n) ? n : 0;
+  }
+  return 0;
+};
+
 const formatCurrency = (amount) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 })
     .format(Number(amount || 0));
@@ -88,27 +97,6 @@ const getSeverityIcon = (severity) => {
   if (s === "medium") return <AlertTriangle className="h-4 w-4 text-brand-warning" />;
   if (s === "low") return <CheckCircle className="h-4 w-4 text-brand-success" />;
   return <AlertTriangle className="h-4 w-4" />;
-};
-
-/* Normalize possible movers payloads */
-const normalizeMovers = (raw) => {
-  // Accept array or object with any of these keys
-  const candidates = Array.isArray(raw) ? raw :
-    raw?.movers || raw?.items || raw?.results || raw?.data || [];
-  const arr = Array.isArray(candidates) ? candidates : [];
-  return arr.map((m) => {
-    const prev = Number(m.prev_usd ?? m.previous_cost ?? 0);
-    const curr = Number(m.current_usd ?? m.current_cost ?? m.amount_usd ?? 0);
-    const changeAmt = Number.isFinite(m.change_amount) ? Number(m.change_amount) : (curr - prev);
-    const rawPct = m.change_percent ?? m.change_pct ?? (prev > 0 ? ((curr - prev) / prev) * 100 : (curr > 0 ? 100 : 0));
-    return {
-      service: m.service || m.name || "—",
-      previous_cost: prev,
-      current_cost: curr,
-      change_amount: Math.round(changeAmt * 100) / 100,
-      change_percent: Math.round(Number(rawPct || 0) * 10) / 10,
-    };
-  });
 };
 
 /* -------- Presentational components -------- */
@@ -217,73 +205,79 @@ const TopMoversCard = ({ movers, windowLabel = "7d" }) => (
       <CardDescription className="text-brand-muted">Biggest cost changes in the last week</CardDescription>
     </CardHeader>
     <CardContent>
-      {Array.isArray(movers) && movers.length > 0 ? (
+      {(!movers || movers.length === 0) ? (
+        <div className="text-sm text-brand-muted">No movers detected in the last 7 days.</div>
+      ) : (
         <div className="space-y-3">
           {movers.slice(0, 6).map((m, i) => (
             <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-brand-bg/30">
               <div className="flex items-center gap-3">
-                <div className={`w-2 h-8 rounded ${m.change_amount >= 0 ? "bg-red-500" : "bg-green-500"}`} />
+                {/* Green is good (down); Red is up */}
+                <div className={`w-2 h-8 rounded ${toNumber(m.change_amount) >= 0 ? "bg-red-500" : "bg-green-500"}`} />
                 <div>
                   <div className="font-medium text-brand-ink text-sm">{m.service}</div>
-                  <div className="text-xs text-brand-muted">{formatCurrency(m.previous_cost)} → {formatCurrency(m.current_cost)}</div>
+                  <div className="text-xs text-brand-muted">{formatCurrency(toNumber(m.previous_cost))} → {formatCurrency(toNumber(m.current_cost))}</div>
                 </div>
               </div>
               <div className="text-right">
-                <div className={`font-semibold text-sm ${m.change_amount >= 0 ? "text-red-600" : "text-green-600"}`}>
-                  {m.change_amount >= 0 ? "+" : ""}{formatCurrency(m.change_amount)}
+                <div className={`font-semibold text-sm ${toNumber(m.change_amount) >= 0 ? "text-red-600" : "text-green-600"}`}>
+                  {toNumber(m.change_amount) >= 0 ? "+" : ""}{formatCurrency(toNumber(m.change_amount))}
                 </div>
-                <div className={`text-xs ${m.change_amount >= 0 ? "text-red-500" : "text-green-500"}`}>
-                  {m.change_percent >= 0 ? "+" : ""}{m.change_percent}%
+                <div className={`text-xs ${toNumber(m.change_amount) >= 0 ? "text-red-500" : "text-green-500"}`}>
+                  {toNumber(m.change_percent) >= 0 ? "+" : ""}{toNumber(m.change_percent).toFixed(1)}%
                 </div>
               </div>
             </div>
           ))}
         </div>
-      ) : (
-        <div className="text-sm text-brand-muted">No movers detected in the last 7 days.</div>
       )}
     </CardContent>
   </Card>
 );
 
-const KeyInsightsCard = ({ insights }) => (
-  <Card className="kpi-card">
-    <CardHeader>
-      <CardTitle className="flex items-center gap-2 text-brand-ink"><Target className="h-5 w-5" />Key Insights</CardTitle>
-      <CardDescription className="text-brand-muted">Important findings and projections</CardDescription>
-    </CardHeader>
-    <CardContent>
-      <div className="space-y-4">
-        <div>
-          <div className="text-sm text-brand-muted">Highest Single Day</div>
-          <div className="font-semibold text-brand-ink">{insights?.highest_single_day?.date || "-"}</div>
-          <div className="text-lg font-bold text-brand-accent">{formatCurrency(insights?.highest_single_day?.amount || 0)}</div>
-        </div>
-        <Separator />
-        <div>
-          <div className="text-sm text-brand-muted">Projected Month-End</div>
-          <div className="text-lg font-bold text-brand-ink">{formatCurrency(insights?.projected_month_end || 0)}</div>
-          <div className="text-xs text-brand-muted">Based on current trend</div>
-        </div>
-        <Separator />
-        <div>
-          <div className="text-sm text-brand-muted">Budget Performance</div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm">MTD: {formatCurrency(insights?.mtd_actual || 0)}</span>
-            <span className="text-sm">Budget: {formatCurrency(insights?.monthly_budget || 0)}</span>
+const KeyInsightsCard = ({ insights }) => {
+  const dateLabel = insights?.highest_single_day?.dateISO
+    ? format(new Date(insights.highest_single_day.dateISO), "MMM d, yyyy")
+    : (insights?.highest_single_day?.date ?? "-");
+  return (
+    <Card className="kpi-card">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-brand-ink"><Target className="h-5 w-5" />Key Insights</CardTitle>
+        <CardDescription className="text-brand-muted">Important findings and projections</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <div>
+            <div className="text-sm text-brand-muted">Highest Single Day</div>
+            <div className="font-semibold text-brand-ink">{dateLabel}</div>
+            <div className="text-lg font-bold text-brand-accent">{formatCurrency(insights?.highest_single_day?.amount || 0)}</div>
           </div>
-          <Progress value={Math.min(((insights?.mtd_actual || 0) / (insights?.monthly_budget || 1)) * 100, 100)} className="h-3" />
-          <div className="flex justify-between text-xs mt-2">
-            <span className="text-brand-muted">Projected: {formatCurrency(insights?.projected_month_end || 0)}</span>
-            <span className={`font-semibold ${Number(insights?.budget_variance || 0) >= 0 ? "text-red-600" : "text-green-600"}`}>
-              {Number(insights?.budget_variance || 0) >= 0 ? "+" : ""}{formatCurrency(insights?.budget_variance || 0)} vs budget
-            </span>
+          <Separator />
+          <div>
+            <div className="text-sm text-brand-muted">Projected Month-End</div>
+            <div className="text-lg font-bold text-brand-ink">{formatCurrency(insights?.projected_month_end || 0)}</div>
+            <div className="text-xs text-brand-muted">Based on current trend</div>
+          </div>
+          <Separator />
+          <div>
+            <div className="text-sm text-brand-muted">Budget Performance</div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm">MTD: {formatCurrency(insights?.mtd_actual || 0)}</span>
+              <span className="text-sm">Budget: {formatCurrency(insights?.monthly_budget || 0)}</span>
+            </div>
+            <Progress value={Math.min(((insights?.mtd_actual || 0) / (insights?.monthly_budget || 1)) * 100, 100)} className="h-3" />
+            <div className="flex justify-between text-xs mt-2">
+              <span className="text-brand-muted">Projected: {formatCurrency(insights?.projected_month_end || 0)}</span>
+              <span className={`font-semibold ${Number(insights?.budget_variance || 0) >= 0 ? "text-red-600" : "text-green-600"}`}>
+                {Number(insights?.budget_variance || 0) >= 0 ? "+" : ""}{formatCurrency(insights?.budget_variance || 0)} vs budget
+              </span>
+            </div>
           </div>
         </div>
-      </div>
-    </CardContent>
-  </Card>
-);
+      </CardContent>
+    </Card>
+  );
+};
 
 const FindingCard = ({ finding, onViewDetails }) => (
   <Card className="finding-card">
@@ -358,19 +352,25 @@ const ProductTable = ({ products }) => (
         </TableRow>
       </TableHeader>
       <TableBody>
-        {products.map((p, i) => (
-          <TableRow key={i} className="hover:bg-brand-bg/30">
-            <TableCell className="font-medium text-brand-ink">{p.product || p.name || p.service || "—"}</TableCell>
-            <TableCell className="text-right text-brand-ink">{formatCurrency(Number(p.amount_usd || p.amount || 0))}</TableCell>
-            <TableCell className="text-right">
-              <div className={`flex items-center justify-end gap-1 ${Number(p.wow_delta || 0) >= 0 ? "text-brand-error" : "text-brand-success"}`}>
-                {Number(p.wow_delta || 0) >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                {formatCurrency(Math.abs(Number(p.wow_delta || 0)))}
-              </div>
-            </TableCell>
-            <TableCell className="text-right text-brand-ink">{Number(p.percent_of_total || 0).toFixed(1)}%</TableCell>
-          </TableRow>
-        ))}
+        {products.map((p, i) => {
+          const wow = toNumber(p.wow_delta || p.wow_usd || 0);
+          const label = p.product || p.name || p.service || "—";
+          const amount = toNumber(p.amount_usd || p.amount || 0);
+          const pct = toNumber(p.percent_of_total || 0);
+          return (
+            <TableRow key={i} className="hover:bg-brand-bg/30">
+              <TableCell className="font-medium text-brand-ink">{label}</TableCell>
+              <TableCell className="text-right text-brand-ink">{formatCurrency(amount)}</TableCell>
+              <TableCell className="text-right">
+                <div className={`flex items-center justify-end gap-1 ${wow >= 0 ? "text-brand-error" : "text-brand-success"}`}>
+                  {wow >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                  {formatCurrency(Math.abs(wow))}
+                </div>
+              </TableCell>
+              <TableCell className="text-right text-brand-ink">{pct.toFixed(1)}%</TableCell>
+            </TableRow>
+          );
+        })}
       </TableBody>
     </Table>
   </div>
@@ -393,6 +393,54 @@ const Dashboard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateRange]);
 
+  const normalizeMovers = (raw, productsForFallback = []) => {
+    // Accept arrays or objects with known keys
+    let arr = raw;
+    if (arr && !Array.isArray(arr)) {
+      if (Array.isArray(arr.data)) arr = arr.data;
+      else if (Array.isArray(arr.movers)) arr = arr.movers;
+      else if (Array.isArray(arr.top_movers)) arr = arr.top_movers;
+      else arr = [];
+    }
+    if (!Array.isArray(arr)) arr = [];
+
+    let out = arr.map((m) => ({
+      service: m.service || m.name || m.product || "—",
+      previous_cost: toNumber(m.previous_cost ?? m.prev_usd ?? m.prev_amount),
+      current_cost: toNumber(m.current_cost ?? m.current_usd ?? m.curr_amount ?? m.amount_usd),
+      change_amount: toNumber(m.change_amount ?? m.change_usd ?? m.delta_usd ?? (toNumber(m.current_cost ?? 0) - toNumber(m.previous_cost ?? 0))),
+      change_percent: toNumber(m.change_percent ?? m.change_pct ?? m.delta_pct ?? (
+        toNumber(m.previous_cost) > 0 ? ((toNumber(m.current_cost) - toNumber(m.previous_cost)) / toNumber(m.previous_cost)) * 100 : 0
+      )),
+    })).filter((m) => m.service && (m.previous_cost || m.current_cost || m.change_amount));
+
+    if (out.length > 0) return out;
+
+    // Fallback: synthesize movers from top_products using wow_delta
+    if (productsForFallback && productsForFallback.length) {
+      const synth = productsForFallback
+        .filter((p) => Number.isFinite(toNumber(p.wow_delta)))
+        .map((p) => {
+          const current = toNumber(p.amount_usd || p.amount || 0);
+          const delta = toNumber(p.wow_delta);
+          const previous = current - delta;
+          const pct = previous !== 0 ? (delta / previous) * 100 : (current > 0 ? 100 : 0);
+          return {
+            service: p.product || p.name || p.service || "—",
+            previous_cost: previous,
+            current_cost: current,
+            change_amount: delta,
+            change_percent: pct,
+          };
+        })
+        .sort((a, b) => Math.abs(b.change_amount) - Math.abs(a.change_amount))
+        .slice(0, 6);
+      return synth;
+    }
+
+    return out;
+  };
+
   const loadAllData = async () => {
     try {
       setLoading(true);
@@ -401,8 +449,7 @@ const Dashboard = () => {
       const [sumRes, fndRes, mvRes] = await Promise.all([
         axios.get(`${API}/summary?window=${dateRange}`),
         axios.get(`${API}/findings?sort=savings&limit=50`),
-        // Try preferred path, fallback to /top-movers if needed (some backends use that)
-        axios.get(`${API}/movers?window=7d`).catch(() => axios.get(`${API}/top-movers?days=7`)),
+        axios.get(`${API}/movers?window=7d`)
       ]);
 
       const sum = sumRes.data || {};
@@ -411,54 +458,57 @@ const Dashboard = () => {
       setSummary(sum);
       setFindings(Array.isArray(fndRes.data) ? fndRes.data : []);
 
-      // Normalize movers payload (handles array or nested containers)
-      const mvNormalized = normalizeMovers(mvRes?.data ?? []);
-      setTopMovers(mvNormalized);
+      const moversNorm = normalizeMovers(mvRes.data, products);
+      setTopMovers(moversNorm);
 
-      // Build Service Breakdown from summary.top_products
-      const total = products.reduce((acc, p) => acc + Number(p.amount_usd || p.amount || 0), 0);
+      // Service Breakdown from summary.top_products
+      const total = products.reduce((acc, p) => acc + toNumber(p.amount_usd || p.amount || 0), 0);
       const palette = ["#8B6F47","#B5905C","#D8C3A5","#A8A7A7","#E98074","#C0B283","#F4E1D2","#E6B89C"];
       const breakdown = products.slice(0, 8).map((p, i) => {
-        const val = Number(p.amount_usd || p.amount || 0);
+        const val = toNumber(p.amount_usd || p.amount || 0);
         return {
           name: p.product || p.name || p.service || p._id || "Other",
           value: val,
           percentage: total ? Number(((val / total) * 100).toFixed(1)) : 0,
-          fill: palette[i % palette.length],
+          fill: palette[i % palette.length]
         };
       });
       setServiceBreakdown({ data: breakdown, total });
 
-      // Build a realistic Daily Spend Trend from total/avg with small noise, MM/DD labels
-      const days = dateRange === "7d" ? 7 : dateRange === "90d" ? 90 : 30;
-      const avg = total && days ? total / days : (kpis.total_30d_cost || 0) / Math.max(days,1);
-      const series = Array.from({ length: days }, (_, i) => {
-        const d = new Date();
-        d.setDate(d.getDate() - (days - 1 - i));
-        // Mild realistic variance
-        const jitter = avg * 0.06 * Math.sin(i / 2.7) + (avg * 0.03 * (Math.random() - 0.5));
-        const amount = Math.max(0, avg + jitter);
-        return { formatted_date: format(d, "MM/dd"), cost: amount };
-      });
+      // Daily Spend Trend: prefer backend if present on summary; otherwise synthesize from totals
+      let series = [];
+      const daily = Array.isArray(sum.daily_series) ? sum.daily_series : [];
+      if (daily.length) {
+        series = daily.map((pt) => {
+          const d = new Date(pt.date || pt.day || pt.dateISO || pt.ds || Date.now());
+          return { formatted_date: format(d, "MM/dd"), cost: toNumber(pt.cost || pt.amount || pt.usd || pt.value) };
+        });
+      } else {
+        const days = dateRange === "7d" ? 7 : dateRange === "90d" ? 90 : 30;
+        const avg = total && days ? total / days : (kpis.total_30d_cost || 0) / Math.max(days,1);
+        series = Array.from({ length: days }, (_, i) => {
+          const d = new Date();
+          d.setDate(d.getDate() - (days - 1 - i));
+          const jitter = avg * 0.06 * Math.sin(i / 2.7) + (avg * 0.03 * (Math.random() - 0.5));
+          const amount = Math.max(0, avg + jitter);
+          return { formatted_date: format(d, "MM/dd"), dateISO: d.toISOString().slice(0,10), cost: amount };
+        });
+      }
       setCostTrend(series);
 
       // Key Insights derived from series + totals
-      // Highest day formatted as "Aug 21, 2025"
-      const highestPt = series.reduce((m, pt, idx) => (pt.cost > m.amount ? { ...pt, idx } : m), { amount: 0, idx: -1 });
-      let highestDateLabel = "-";
-      if (highestPt.idx >= 0) {
-        const d = new Date();
-        d.setDate(d.getDate() - (series.length - 1 - highestPt.idx));
-        highestDateLabel = format(d, "MMM d, yyyy");
-      }
+      const highest = series.reduce(
+        (m, pt) => (pt.cost > m.amount ? { date: pt.formatted_date, dateISO: pt.dateISO || new Date().toISOString().slice(0,10), amount: pt.cost } : m),
+        { date: "-", dateISO: null, amount: 0 }
+      );
       const totalWindow = series.reduce((s, pt) => s + pt.cost, 0);
-      const monthBudget = 180000; // fixed to your requested budget
+      const monthBudget = 180000; // fixed as requested
       setKeyInsights({
-        highest_single_day: { date: highestDateLabel, amount: highestPt.amount || 0 },
+        highest_single_day: highest,
         projected_month_end: totalWindow,
-        mtd_actual: totalWindow * (new Date().getDate() / Math.max(days, 1)),
+        mtd_actual: totalWindow * (new Date().getDate() / Math.max(series.length, 1)),
         monthly_budget: monthBudget,
-        budget_variance: totalWindow - monthBudget,
+        budget_variance: totalWindow - monthBudget
       });
 
     } catch (err) {
@@ -515,7 +565,7 @@ ${finding.suggested_action}
       const arr = Array.isArray(data) ? data : [];
       const headers = ["Title", "Type", "Severity", "Monthly Savings", "Resource ID", "Action"];
       const rows = arr.map((f) => [
-        f.title, f.type, f.severity, f.monthly_savings_usd_est, f.resource_id || "", f.suggested_action,
+        f.title, f.type, f.severity, f.monthly_savings_usd_est, f.resource_id || "", f.suggested_action
       ]);
       const csv = [headers, ...rows].map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
       const blob = new Blob([csv], { type: "text/csv" });
@@ -547,7 +597,7 @@ ${finding.suggested_action}
       <div className="min-h-screen bg-gradient-to-br from-brand-bg to-brand-light flex items-center justify-center">
         <Alert className="max-w-md alert-brand">
           <AlertTriangle className="h-4 w-4" />
-        <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       </div>
     );
@@ -721,7 +771,7 @@ ${finding.suggested_action}
                   {[
                     { type: "Under-utilized", count: kpis.underutilized_count, color: "bg-blue-500" },
                     { type: "Orphaned", count: kpis.orphans_count, color: "bg-yellow-500" },
-                    { type: "Idle", count: Array.isArray(findings) ? findings.filter(f => String(f.title).toLowerCase().includes("idle")).length : 0, color: "bg-red-500" },
+                    { type: "Idle", count: Array.isArray(findings) ? findings.filter(f => String(f.title).toLowerCase().includes("idle")).length : 0, color: "bg-red-500" }
                   ].map((it, i) => (
                     <div key={i} className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
