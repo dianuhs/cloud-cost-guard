@@ -98,6 +98,34 @@ const getSeverityIcon = (severity) => {
   if (s === "low") return <CheckCircle className="h-4 w-4 text-brand-success" />;
   return <AlertTriangle className="h-4 w-4" />;
 };
+/* Choose the most relevant command to display for a finding */
+const pickBestCommand = (f) => {
+  const cmds = Array.isArray(f?.commands) ? f.commands : [];
+  if (!cmds.length) return null;
+  const lcTitle = String(f?.title || "").toLowerCase();
+  const lcType  = String(f?.type  || "").toLowerCase();
+  const serviceHints = [
+    { hint: ["ec2","instance","underutilized","autoscaling"], match: /aws\s+ec2|autoscaling/i },
+    { hint: ["ebs","volume","unattached"],                     match: /aws\s+ec2.*(describe-volumes|delete-volume)/i },
+    { hint: ["eip","elastic ip"],                              match: /aws\s+ec2.*(describe-addresses|release-address)/i },
+    { hint: ["rds","db"],                                      match: /aws\s+rds/i },
+    { hint: ["s3","bucket"],                                   match: /aws\s+s3|s3api/i },
+    { hint: ["lambda"],                                        match: /aws\s+(logs|lambda)/i },
+    { hint: ["elb","load balancer"],                           match: /aws\s+elbv2/i },
+    { hint: ["cloudwatch","anomaly","ce"],                     match: /aws\s+ce\s+get-cost-and-usage/i },
+    { hint: ["nat"],                                           match: /aws\s+ec2.*nat/i },
+  ];
+  for (const s of serviceHints) {
+    if (s.hint.some(h => lcTitle.includes(h) || lcType.includes(h))) {
+      const found = cmds.find(c => s.match.test(c));
+      if (found) return found;
+    }
+  }
+  const ce = cmds.find(c => /aws\s+ce\s+get-cost-and-usage/i.test(c));
+  if (ce) return ce;
+  return cmds[0];
+};
+
 
 /* -------- Findings sort/pick -------- */
 const SEVERITY_ORDER = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -338,9 +366,7 @@ const FindingCard = ({ finding, onViewDetails }) => (
         {finding.suggested_action && <p className="text-sm text-brand-ink">{finding.suggested_action}</p>}
 
         {finding.commands && finding.commands.length > 0 && (
-          <div className="bg-brand-bg p-3 rounded-lg border border-brand-line">
-            <code className="text-xs font-mono text-brand-ink">{finding.commands[0]}</code>
-          </div>
+          <div className="p-3 rounded-lg border border-[#E7DCCF] bg-[#F7F1EA]"><code className="text-xs font-mono text-brand-ink">{pickBestCommand(finding)}</code></div>
         )}
 
         <div className="flex items-center justify-between text-xs text-brand-muted">
@@ -643,7 +669,7 @@ ${finding.suggested_action}
 
             <div className="flex items-center gap-2">
               <Select value={dateRange} onValueChange={setDateRange}>
-                <SelectTrigger className="w-38 md:w-42 btn-brand-outline rounded-2xl flex items-center justify-start px-4">
+                <SelectTrigger className="w-40 md:w-44 btn-brand-outline rounded-2xl flex items-center justify-start px-4">
                   <Calendar className="h-4 w-4 mr-2" />
                   <SelectValue placeholder="Last 30 days" />
                 </SelectTrigger>
@@ -728,14 +754,14 @@ ${finding.suggested_action}
 
         {/* Tabs */}
         <Tabs defaultValue="findings" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 rounded-2xl bg-brand-bg/60 border border-brand-line p-1">
-            <TabsTrigger value="findings" className="rounded-xl text-base py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-brand-ink">
+          <TabsList className="grid w-full grid-cols-3 rounded-2xl bg-[#F7F1EA] border border-[#E7DCCF] p-1 shadow-inner">
+            <TabsTrigger value="findings" className="rounded-xl text-base py-2 px-4 text-[#827464] hover:text-[#2F2A24] transition-colors data-[state=active]:bg-white data-[state=active]:text-[#2F2A24] data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-[#E7DCCF]">
               Findings
             </TabsTrigger>
-            <TabsTrigger value="products" className="rounded-xl text-base py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-brand-ink">
+            <TabsTrigger value="products" className="rounded-xl text-base py-2 px-4 text-[#827464] hover:text-[#2F2A24] transition-colors data-[state=active]:bg-white data-[state=active]:text-[#2F2A24] data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-[#E7DCCF]">
               Products
             </TabsTrigger>
-            <TabsTrigger value="overview" className="rounded-xl text-base py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-brand-ink">
+            <TabsTrigger value="overview" className="rounded-xl text-base py-2 px-4 text-[#827464] hover:text-[#2F2A24] transition-colors data-[state=active]:bg-white data-[state=active]:text-[#2F2A24] data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-[#E7DCCF]">
               Overview
             </TabsTrigger>
           </TabsList>
@@ -743,7 +769,7 @@ ${finding.suggested_action}
           {/* Findings */}
           <TabsContent value="findings" className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="font-serif text-[26px] md:text-[28px] leading-tight font-semibold text-brand-ink tracking-tight">
+              <h2 className="font-serif text-[22px] md:text-[24px] leading-tight font-semibold text-brand-ink tracking-tight">
                 Cost Optimization Findings
               </h2>
               <Badge className="badge-brand text-brand-success border-brand-success/20">
