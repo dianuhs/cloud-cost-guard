@@ -227,3 +227,14 @@ h1{ font-weight:600; } h2{ font-weight:600; }
   font-weight: 600;
   margin-right: 4px;
 }
+
+/* Strong override to ensure white background for evidence box */
+.finding-card .evidence-box {
+  background: var(--brand-card) !important; /* white, matches card */
+  border: 1px solid var(--brand-line) !important;
+  border-radius: var(--radius-md) !important;
+  padding: 0.75rem !important;
+  font-size: 0.85rem !important;
+}
+.finding-card .evidence-box div { margin-bottom: 2px !important; }
+.finding-card .evidence-box .font-mono { font-weight: 500 !important; }
