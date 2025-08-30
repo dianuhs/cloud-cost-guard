@@ -726,7 +726,7 @@ ${finding.suggested_action}
           />
           <KPICard
             title="Savings Ready"
-            value={formatCurrency(savingsReady)}   {/* now matches the cards */}
+            value={formatCurrency(savingsReady)}
             icon={TrendingDown}
             subtitle="potential monthly savings"
             dataFreshness={kpis.data_freshness_hours}
@@ -883,4 +883,3 @@ export default function App() {
     </div>
   );
 }
-
