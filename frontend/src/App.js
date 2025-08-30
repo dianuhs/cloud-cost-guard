@@ -210,7 +210,7 @@ const TopMoversCard = ({ movers, windowLabel = "7d" }) => (
       ) : (
         <div className="space-y-3">
           {movers.slice(0, 6).map((m, i) => (
-            <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-brand-bg/30">
+            <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-brand-bg/30 border border-brand-line">
               <div className="flex items-center gap-3">
                 {/* Green is good (down); Red is up */}
                 <div className={`w-2 h-8 rounded ${toNumber(m.change_amount) >= 0 ? "bg-red-500" : "bg-green-500"}`} />
@@ -279,83 +279,106 @@ const KeyInsightsCard = ({ insights }) => {
   );
 };
 
-const FindingCard = ({ finding, onViewDetails }) => {
-  const savings = toNumber(finding?.monthly_savings_usd_est);
+/* ---- Evidence Block (inline style to match screenshot) ---- */
+const EvidenceBlock = ({ evidence }) => {
+  if (!evidence || typeof evidence !== "object") return null;
+
+  const rows = [];
+  const push = (label, val) => {
+    if (val === undefined || val === null || val === "") return;
+    rows.push([label, String(val)]);
+  };
+
+  // Preferred order
+  push("Resource", evidence.resource_id);
+  push("Region", evidence.region);
+  push("Type", evidence.instance_type || evidence.db_instance_class || evidence.type);
+  push("Size", evidence.size_gb != null ? `${evidence.size_gb} GB` : undefined);
+  push("Allocation ID", evidence.allocation_id);
+  push("LB Name", evidence.lb_name);
+
+  // Additional leftover fields
+  const used = new Set(rows.map(([k]) => k.toLowerCase()));
+  Object.entries(evidence).forEach(([k, v]) => {
+    const label = k.replace(/_/g, " ").replace(/\b\w/g, m => m.toUpperCase());
+    if (!used.has(label.toLowerCase()) && v !== undefined && v !== null && v !== "") {
+      rows.push([label, String(v)]);
+    }
+  });
+
+  if (rows.length === 0) return null;
 
   return (
-    <Card className="finding-card">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2">
-            {getSeverityIcon(finding.severity)}
-            <CardTitle className="text-sm font-medium text-brand-ink">{finding.title}</CardTitle>
-          </div>
-          <div className="flex flex-col gap-1">
-            <Badge className={getSeverityColor(finding.severity) + " px-2 py-1 text-xs font-medium rounded-md"}>
-              {String(finding.severity || "").toUpperCase()}
-            </Badge>
-            {finding.confidence && (
-              <Badge className={getConfidenceColor(finding.confidence) + " px-2 py-1 text-xs rounded-md"}>
-                {String(finding.confidence).replace("_", " ").toUpperCase()} CONF
-              </Badge>
-            )}
-          </div>
+    <div className="evidence-panel inline-evidence">
+      {rows.map(([label, value], i) => (
+        <div key={i} className="ev-row">
+          <span className="ev-label">{label}:</span>{" "}
+          <span className="ev-code">{value}</span>
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-3">
-          {/* Savings or Investigation */}
-          {savings > 0 ? (
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-brand-muted">Monthly Savings</span>
-              <span className="text-lg font-semibold text-brand-success">{formatCurrency(savings)}</span>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-brand-muted">No immediate savings</span>
-              <Badge
-                className="px-2 py-1 text-xs rounded-md"
-                style={{ background: "#FFF7ED", color: "#92400E", border: "1px solid #FDE68A" }}
-              >
-                Investigation
-              </Badge>
-            </div>
-          )}
-
-          {finding.evidence && (finding.evidence.resource_id || finding.evidence.region || finding.evidence.instance_type) && (
-            <div className="text-xs bg-brand-bg/30 p-2 rounded border border-brand-line">
-              {finding.evidence.resource_id && <div className="font-mono text-brand-muted">Resource: {finding.evidence.resource_id}</div>}
-              {finding.evidence.region && <div className="text-brand-muted">Region: {finding.evidence.region}</div>}
-              {finding.evidence.instance_type && <div className="text-brand-muted">Type: {finding.evidence.instance_type}</div>}
-            </div>
-          )}
-
-          <div className="flex justify-between text-xs">
-            <span className="text-brand-muted">Risk: <span className={getRiskColor(finding.risk_level)}>{finding.risk_level}</span></span>
-            {finding.implementation_time && <span className="text-brand-muted">Time: {finding.implementation_time}</span>}
-          </div>
-
-          {finding.suggested_action && <p className="text-sm text-brand-ink">{finding.suggested_action}</p>}
-
-          {finding.commands && finding.commands.length > 0 && (
-            <div className="bg-brand-bg p-3 rounded-lg border border-brand-line">
-              <code className="text-xs font-mono text-brand-ink">{finding.commands[0]}</code>
-            </div>
-          )}
-
-          <div className="flex items-center justify-between text-xs text-brand-muted">
-            {finding.last_analyzed && <span>Analyzed: {formatTimestamp(finding.last_analyzed)}</span>}
-          </div>
-
-          <Button variant="outline" size="sm" onClick={() => onViewDetails(finding)} className="w-full btn-brand-outline">
-            <Eye className="h-3 w-3 mr-1" />
-            View Details & Methodology
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+      ))}
+    </div>
   );
 };
+
+const FindingCard = ({ finding, onViewDetails }) => (
+  <Card className="finding-card">
+    <CardHeader className="pb-3">
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-2">
+          {getSeverityIcon(finding.severity)}
+          <CardTitle className="text-sm font-medium text-brand-ink">{finding.title}</CardTitle>
+        </div>
+        <div className="flex flex-col gap-1">
+          <Badge className={getSeverityColor(finding.severity) + " px-2 py-1 text-xs font-medium rounded-md"}>
+            {String(finding.severity || "").toUpperCase()}
+          </Badge>
+          {finding.confidence && (
+            <Badge className={getConfidenceColor(finding.confidence) + " px-2 py-1 text-xs rounded-md"}>
+              {String(finding.confidence).replace("_", " ").toUpperCase()} CONF
+            </Badge>
+          )}
+        </div>
+      </div>
+    </CardHeader>
+    <CardContent>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-brand-muted">Monthly Savings</span>
+          {toNumber(finding.monthly_savings_usd_est) > 0 ? (
+            <span className="text-lg font-semibold text-brand-success">{formatCurrency(finding.monthly_savings_usd_est)}</span>
+          ) : (
+            <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-600 border border-gray-200">Investigation</span>
+          )}
+        </div>
+
+        {/* Evidence */}
+        <EvidenceBlock evidence={finding.evidence} />
+
+        <div className="flex justify-between text-xs">
+          <span className="text-brand-muted">Risk: <span className={getRiskColor(finding.risk_level)}>{finding.risk_level}</span></span>
+          {finding.implementation_time && <span className="text-brand-muted">Time: {finding.implementation_time}</span>}
+        </div>
+
+        {finding.suggested_action && <p className="text-sm text-brand-ink">{finding.suggested_action}</p>}
+
+        {finding.commands && finding.commands.length > 0 && (
+          <div className="bg-brand-bg p-3 rounded-lg border border-brand-line">
+            <code className="text-xs font-mono text-brand-ink">{finding.commands[0]}</code>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between text-xs text-brand-muted">
+          {finding.last_analyzed && <span>Analyzed: {formatTimestamp(finding.last_analyzed)}</span>}
+        </div>
+
+        <Button variant="outline" size="sm" onClick={() => onViewDetails(finding)} className="w-full btn-brand-outline">
+          <Eye className="h-3 w-3 mr-1" />
+          View Details & Methodology
+        </Button>
+      </div>
+    </CardContent>
+  </Card>
+);
 
 const ProductTable = ({ products }) => (
   <div className="table-brand rounded-lg">
@@ -405,9 +428,8 @@ const Dashboard = () => {
   const [error, setError] = useState(null);
   const [dateRange, setDateRange] = useState("30d");
 
-  // New: investigations toggle + derived savings
-  const [showInvestigations, setShowInvestigations] = useState(false);
   const [derivedSavings, setDerivedSavings] = useState(0);
+  const [showInvestigations, setShowInvestigations] = useState(false);
 
   useEffect(() => {
     loadAllData();
@@ -477,16 +499,9 @@ const Dashboard = () => {
       const kpis = sum.kpis || {};
       const products = Array.isArray(sum.top_products) ? sum.top_products : [];
       setSummary(sum);
-
-      const arr = Array.isArray(fndRes.data) ? fndRes.data : [];
-      setFindings(arr);
-
-      // keep badge consistent with cards on screen (positive savings only)
-      const derived = arr.reduce((s, f) => {
-        const v = toNumber(f?.monthly_savings_usd_est);
-        return s + (v > 0 ? v : 0);
-      }, 0);
-      setDerivedSavings(derived);
+      const fArr = Array.isArray(fndRes.data) ? fndRes.data : [];
+      setFindings(fArr);
+      setDerivedSavings(fArr.reduce((acc, f) => acc + (toNumber(f.monthly_savings_usd_est) > 0 ? toNumber(f.monthly_savings_usd_est) : 0), 0));
 
       const moversNorm = normalizeMovers(mvRes.data, products);
       setTopMovers(moversNorm);
@@ -505,7 +520,7 @@ const Dashboard = () => {
       });
       setServiceBreakdown({ data: breakdown, total });
 
-      // Daily Spend Trend: prefer backend if present on summary; otherwise synthesize
+      // Daily Spend Trend: prefer backend if present on summary; otherwise synthesize from totals
       let series = [];
       const daily = Array.isArray(sum.daily_series) ? sum.daily_series : [];
       if (daily.length) {
@@ -532,7 +547,7 @@ const Dashboard = () => {
         { date: "-", dateISO: null, amount: 0 }
       );
       const totalWindow = series.reduce((s, pt) => s + pt.cost, 0);
-      const monthBudget = 180000; // fixed for now
+      const monthBudget = 180000; // fixed as requested
       setKeyInsights({
         highest_single_day: highest,
         projected_month_end: totalWindow,
@@ -548,18 +563,6 @@ const Dashboard = () => {
       setLoading(false);
     }
   };
-
-  // Sort + filter for Findings
-  const severityRank = { critical: 0, high: 1, medium: 2, low: 3 };
-  const sortedFindings = [...findings].sort((a, b) => {
-    const sa = severityRank[String(a?.severity || '').toLowerCase()] ?? 99;
-    const sb = severityRank[String(b?.severity || '').toLowerCase()] ?? 99;
-    if (sa !== sb) return sa - sb;
-    return toNumber(b?.monthly_savings_usd_est) - toNumber(a?.monthly_savings_usd_est);
-  });
-  const savingsOnly = sortedFindings.filter(f => toNumber(f?.monthly_savings_usd_est) > 0);
-  const investigations = sortedFindings.filter(f => toNumber(f?.monthly_savings_usd_est) <= 0);
-  const displayFindings = showInvestigations ? sortedFindings : savingsOnly;
 
   const handleViewDetails = (finding) => {
     const evidence = JSON.stringify(finding.evidence, null, 2);
@@ -607,7 +610,7 @@ ${finding.suggested_action}
       const arr = Array.isArray(data) ? data : [];
       const headers = ["Title", "Type", "Severity", "Monthly Savings", "Resource ID", "Action"];
       const rows = arr.map((f) => [
-        f.title, f.type, f.severity, f.monthly_savings_usd_est, f.resource_id || "", f.suggested_action
+        f.title, f.type, f.severity, f.monthly_savings_usd_est, (f.evidence && (f.evidence.resource_id || "")) || f.resource_id || "", f.suggested_action
       ]);
       const csv = [headers, ...rows].map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
       const blob = new Blob([csv], { type: "text/csv" });
@@ -651,6 +654,17 @@ ${finding.suggested_action}
     dateRange === "7d"  ? "Cost trends over the last 7 days"  :
                           "Cost trends over the last 90 days";
 
+  // Prepare findings: filter & sort
+  const severityRank = { critical: 0, high: 1, medium: 2, low: 3 };
+  const displayedFindings = (showInvestigations ? findings : findings.filter(f => toNumber(f.monthly_savings_usd_est) > 0))
+    .slice()
+    .sort((a, b) => {
+      const ra = severityRank[String(a.severity || "").toLowerCase()] ?? 99;
+      const rb = severityRank[String(b.severity || "").toLowerCase()] ?? 99;
+      if (ra !== rb) return ra - rb;
+      return toNumber(b.monthly_savings_usd_est) - toNumber(a.monthly_savings_usd_est);
+    });
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand-bg to-brand-light">
       {/* Header */}
@@ -681,7 +695,7 @@ ${finding.suggested_action}
                 <Download className="h-4 w-4 mr-2" />
                 Export CSV
               </Button>
-              <Button onClick={loadAllData} className="btn-brand-primary rounded-2xl">
+              <Button onClick={loadAllData} className="btn-brand-primary">
                 <Activity className="h-4 w-4 mr-2" />
                 Refresh
               </Button>
@@ -715,7 +729,7 @@ ${finding.suggested_action}
           />
           <KPICard
             title="Savings Ready"
-            value={formatCurrency(derivedSavings)}   /* derived from cards */
+            value={formatCurrency(derivedSavings || kpis.savings_ready_usd)}
             icon={TrendingDown}
             subtitle="potential monthly savings"
             dataFreshness={kpis.data_freshness_hours}
@@ -759,37 +773,36 @@ ${finding.suggested_action}
           {/* Findings */}
           <TabsContent value="findings" className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="font-brand-serif text-[18px] md:text-[20px] leading-tight font-semibold text-brand-ink tracking-tight">
+              <h2 className="font-serif text-[18px] md:text-[20px] leading-tight font-semibold text-brand-ink tracking-tight">
                 Cost Optimization Findings
               </h2>
-
               <div className="flex items-center gap-2">
                 <Badge className="badge-brand text-brand-success border-brand-success/20">
-                  {formatCurrency(derivedSavings)}/month potential
+                  {formatCurrency(derivedSavings || kpis.savings_ready_usd)}/month potential
                 </Badge>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setShowInvestigations(v => !v)}
                   className="btn-brand-outline"
+                  onClick={() => setShowInvestigations(s => !s)}
                 >
-                  {showInvestigations ? "Hide Investigations" : `Show Investigations (${investigations.length})`}
+                  {showInvestigations ? "Hide Investigations" : "Show Investigations"}
                 </Button>
               </div>
             </div>
 
-            {displayFindings.length === 0 ? (
+            {displayedFindings.length === 0 ? (
               <Card className="kpi-card">
                 <CardContent className="text-center py-12">
                   <CheckCircle className="h-12 w-12 text-brand-success mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-brand-ink mb-2">All Optimized!</h3>
-                  <p className="text-brand-muted">No immediate savings opportunities right now.</p>
+                  <p className="text-brand-muted">No cost optimization opportunities found at this time.</p>
                 </CardContent>
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {displayFindings.map((f) => (
-                  <FindingCard key={f.finding_id || `${f.title}-${f.resource_id || ""}`} finding={f} onViewDetails={handleViewDetails} />
+                {displayedFindings.map((f, idx) => (
+                  <FindingCard key={(f.finding_id || `${f.title}-${idx}`)} finding={f} onViewDetails={handleViewDetails} />
                 ))}
               </div>
             )}
