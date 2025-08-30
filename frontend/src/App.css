@@ -1,4 +1,4 @@
-/* App.css â€” Cloud & Capital theme (active pill fills track) */
+/* App.css â€” Cloud & Capital theme */
 
 /* Fonts */
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
@@ -11,9 +11,9 @@
   --brand-line:#E9E3DE;
   --brand-card:#FFFFFF;
 
-  /* Solid beige background */
-  --brand-bg:#f5eee9;
-  --brand-light:#f5eee9;
+  /* Slightly lighter beige */
+  --brand-bg:#F7F1EB;
+  --brand-light:#F7F1EB;
 
   --brand-accent:#8B6F47;
   --brand-accent-2:#B5905C;
@@ -47,19 +47,22 @@ body{
 }
 
 /* Brand block */
-.brand-logo{
-  height:44px; width:auto; display:block;
-  border:1px solid var(--brand-line);
-  border-radius:8px; background:#ECE5DE;
-}
+.brand-logo{ height:44px; width:auto; display:block; border:1px solid var(--brand-line); border-radius:8px; background:#ECE5DE; }
 .brand-title{
   font-family: "Playfair Display", Georgia, "Times New Roman", serif;
-  font-weight: 700; font-size: 28px; line-height: 1.1;
-  color: var(--brand-ink); letter-spacing: 0.2px;
+  font-weight: 700;
+  font-size: 28px;
+  line-height: 1.1;
+  color: var(--brand-ink);
+  letter-spacing: 0.2px;
 }
 .brand-subtitle{
-  font-size: 16px; font-weight: 600; color: var(--brand-muted);
-  margin-top: 2px; line-height: 1.1; letter-spacing: 0.1px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--brand-muted);
+  margin-top: 2px;
+  line-height: 1.1;
+  letter-spacing: 0.1px;
 }
 
 /* Palette hooks */
@@ -71,7 +74,7 @@ body{
 
 .bg-brand-bg{ background:var(--brand-bg) !important; }
 .bg-brand-light{ background:var(--brand-light) !important; }
-.bg-brand-bg\/30{ background-color: rgba(245, 238, 233, 0.6) !important; }
+.bg-brand-bg\/30{ background-color: rgba(247, 241, 235, 0.6) !important; }
 .border-brand-line{ border-color:var(--brand-line) !important; }
 
 /* Cards */
@@ -85,25 +88,80 @@ body{
 
 /* Buttons */
 .btn-brand-primary{
-  background:var(--brand-accent); color:#fff; border:1px solid var(--brand-accent);
+  background:var(--brand-accent);
+  color:#fff; border:1px solid var(--brand-accent);
   border-radius: var(--radius-md);
 }
 .btn-brand-primary:hover{ filter: brightness(0.95); }
 .btn-brand-outline{
-  background:#fff; color:var(--brand-ink); border:1px solid var(--brand-line);
+  background:#fff; color:var(--brand-ink);
+  border:1px solid var(--brand-line);
   border-radius: var(--radius-md);
 }
 .btn-brand-outline:hover{ background:#fafafa; }
 
 /* Badges */
 .badge-brand{
-  background: #EEF2FF; color: #3730A3; border: 1px solid #E5E7EB;
-  border-radius: 999px; padding: 4px 8px;
+  background: #EEF2FF;
+  color: #3730A3;
+  border: 1px solid #E5E7EB;
+  border-radius: 999px;
+  padding: 4px 8px;
+}
+
+/* Legacy Tabs (kept for other places) */
+.tabs-list{
+  background:#fff;
+  border:1px solid var(--brand-line);
+  border-radius: var(--radius-md);
+  padding:4px;
+}
+.tab-trigger{
+  border-radius: var(--radius-sm);
+  color:var(--brand-muted);
+}
+.tab-trigger[aria-selected="true"]{
+  background:var(--brand-bg);
+  color:var(--brand-ink);
+  box-shadow: inset 0 0 0 1px var(--brand-line);
+}
+
+/* New pill tabs (exact look we finalized) */
+.ccg-tabs{
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  align-items: center;
+  width: 100%;
+  background: #FBF6F1;
+  border: 1px solid #E7DCCF;
+  border-radius: 22px;
+  padding: 6px;
+  height: 44px;
+  box-shadow: inset 0 1px 0 #FFFFFF, inset 0 -1px 0 #EDE4D8;
+}
+.ccg-tab{
+  display:flex; align-items:center; justify-content:center;
+  height: 100%;
+  border-radius: 18px;
+  font-weight: 700;
+  font-size: 16px;
+  color:#8A7A6A;
+  border: 2px solid transparent;
+  transition: color .2s ease, background .2s ease, border-color .2s ease;
+}
+.ccg-tab:hover{ color:#2F2A24; }
+.ccg-tab[data-state="active"]{
+  background: #FFFFFF;
+  color:#2F2A24;
+  border-color: #8B6F47;            /* visible warm border */
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
 }
 
 /* Alerts */
 .alert-brand{
-  background: #EAF2FF; border:1px solid #CFE0FF; color:#1E3A8A;
+  background: #EAF2FF;
+  border:1px solid #CFE0FF;
+  color:#1E3A8A;
   border-radius: var(--radius-md);
 }
 
@@ -111,12 +169,17 @@ body{
 .table-brand table{ width:100%; border-collapse: collapse; }
 .table-brand thead th{
   border-bottom:1px solid var(--brand-line);
-  padding:12px 10px; background:#FFFDFB; font-weight:600;
-  font-size: 0.92rem; color: var(--brand-muted);
+  padding:12px 10px;
+  background:#FFFDFB;
+  font-weight:600;
+  font-size: 0.92rem;
+  color: var(--brand-muted);
 }
 .table-brand tbody td{
   border-bottom:1px solid var(--brand-line);
-  padding:12px 10px; font-size: 0.95rem; color: var(--brand-ink);
+  padding:12px 10px;
+  font-size: 0.95rem;
+  color: var(--brand-ink);
 }
 .table-brand tr:hover td{ background: rgba(233,227,222,0.25); }
 
@@ -142,6 +205,7 @@ body{
 /* Misc */
 button{ cursor:pointer; }
 .w-36{ width:9rem; }
+.w-38{ width: 9.5rem; }
 
 /* Movers colored bars + text colors */
 .w-2{ width:0.5rem; } .h-8{ height:2rem; } .rounded{ border-radius:999px; }
@@ -160,55 +224,24 @@ h1{ font-weight:600; } h2{ font-weight:600; }
 .rounded-lg{ border-radius: var(--radius-lg); }
 .hover\:shadow-brand-md:hover{ box-shadow: var(--shadow-md); }
 
-/* Utilities for custom widths used in JSX */
-.w-38 { width: 9.5rem; }
-@media (min-width: 768px){
-  .md\:w-42 { width: 10.5rem; }
+/* Evidence block â€” screenshot style */
+.evidence-panel.inline-evidence{
+  background: #FAF4EE;
+  border: 1px solid #E7DCCF;
+  border-radius: 12px;
+  padding: 10px 14px;
+  color: #6F6257;
 }
-
-/* Use the same serif as the header title when needed */
-.font-brand-serif{ font-family: "Playfair Display", Georgia, "Times New Roman", serif; }
-
-/* -------------------------------------------------- */
-/* Tabs (final): pill fills the track height           */
-/* -------------------------------------------------- */
-.ccg-tabs{
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  height: 38px;                 /* slightly taller */
-  align-items: center;
-  gap: 6px;
-  padding: 2px;                 /* minimal padding so pill fills track */
-  background: #FCF7F1;          /* lighter beige */
-  border: 1px solid #E9DFD3;    /* lighter border */
-  border-radius: 10px;          /* match pill radius */
-  overflow: hidden;
-}
-
-.ccg-tab{
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  border-radius: 10px;          /* same curve as track */
+.ev-row{ line-height: 1.6; margin: 2px 0; }
+.ev-label{
   font-size: 14px;
-  font-weight: 600;
-  color: #8A7A6A;
-  border: 1px solid transparent;/* reserve space (no jump) */
-  transition: color .15s ease, background .15s ease, border-color .15s ease;
-  user-select: none;
+  font-weight: 500;
+  color: #6F6257;
+  letter-spacing: 0.15px;
 }
-.ccg-tab:hover{ color: #2F2A24; }
-
-/* Active pill: white, thick, inner ring accent */
-.ccg-tab[data-state="active"]{
-  background: #FFFFFF;
-  color: #2F2A24;
-  border-color: transparent;     /* keep same thickness */
-  box-shadow: inset 0 0 0 2px #8B6F47;  /* inner accent ring */
-}
-
-/* optional: a touch taller on md+ screens */
-@media (min-width: 768px){
-  .ccg-tabs{ height: 40px; padding: 2px; }
+.ev-code{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 14px;
+  color: #3E372F;
+  letter-spacing: 0.1px;
 }
