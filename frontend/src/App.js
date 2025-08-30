@@ -99,6 +99,22 @@ const getSeverityIcon = (severity) => {
   return <AlertTriangle className="h-4 w-4" />;
 };
 
+/* -------- Findings sort/pick -------- */
+const SEVERITY_ORDER = { critical: 0, high: 1, medium: 2, low: 3 };
+const sortAndPickFindings = (arr, limit = 9) => {
+  const safe = Array.isArray(arr) ? arr : [];
+  return [...safe]
+    .sort((a, b) => {
+      const sa = SEVERITY_ORDER[String(a.severity || "").toLowerCase()] ?? 99;
+      const sb = SEVERITY_ORDER[String(b.severity || "").toLowerCase()] ?? 99;
+      if (sa !== sb) return sa - sb;
+      const va = toNumber(a.monthly_savings_usd_est);
+      const vb = toNumber(b.monthly_savings_usd_est);
+      return vb - va;
+    })
+    .slice(0, limit);
+};
+
 /* -------- Presentational components -------- */
 const KPICard = ({ title, value, change, icon: Icon, subtitle, dataFreshness }) => (
   <Card className="kpi-card hover:shadow-brand-md transition-all duration-200">
@@ -609,48 +625,48 @@ ${finding.suggested_action}
     dateRange === "7d"  ? "Cost trends over the last 7 days"  :
                           "Cost trends over the last 90 days";
 
+  const displayFindings = sortAndPickFindings(findings, 9);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand-bg to-brand-light">
       {/* Header */}
-<div className="nav-header">
-  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <img src={logo} alt="Cloud & Capital" className="brand-logo" />
-        <div className="leading-tight">
-          <h1 className="brand-title">Cloud Cost Guard</h1>
-          <p className="text-[15px] text-brand-muted">Multi-cloud cost optimization</p>
+      <div className="nav-header">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <img src={logo} alt="Cloud & Capital" className="brand-logo" />
+              <div className="leading-tight">
+                <h1 className="brand-title">Cloud Cost Guard</h1>
+                <p className="text-[15px] text-brand-muted">Multi-cloud cost optimization</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Select value={dateRange} onValueChange={setDateRange}>
+                <SelectTrigger className="w-38 md:w-42 btn-brand-outline rounded-2xl flex items-center justify-start px-4">
+                  <Calendar className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Last 30 days" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7d">Last 7 days</SelectItem>
+                  <SelectItem value="30d">Last 30 days</SelectItem>
+                  <SelectItem value="90d">Last 90 days</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Button variant="outline" onClick={exportCSV} className="btn-brand-outline rounded-2xl">
+                <Download className="h-4 w-4 mr-2" />
+                Export CSV
+              </Button>
+
+              <Button onClick={loadAllData} className="btn-brand-primary rounded-2xl">
+                <Activity className="h-4 w-4 mr-2" />
+                Refresh
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
-
-      {/* Controls */}
-      <div className="flex items-center gap-2">
-        <Select value={dateRange} onValueChange={setDateRange}>
-          <SelectTrigger className="w-38 md:w-42 btn-brand-outline rounded-2xl flex items-center justify-start">
-            <Calendar className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Last 30 days" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="7d">Last 7 days</SelectItem>
-            <SelectItem value="30d">Last 30 days</SelectItem>
-            <SelectItem value="90d">Last 90 days</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Button variant="outline" onClick={exportCSV} className="btn-brand-outline rounded-2xl">
-          <Download className="h-4 w-4 mr-2" />
-          Export CSV
-        </Button>
-
-        <Button onClick={loadAllData} className="btn-brand-primary rounded-2xl">
-          <Activity className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
-      </div>
-    </div>
-  </div>
-</div>
-
 
       {/* Body */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -712,22 +728,30 @@ ${finding.suggested_action}
 
         {/* Tabs */}
         <Tabs defaultValue="findings" className="space-y-6">
-          <TabsList className="tabs-list grid w-full grid-cols-3">
-            <TabsTrigger value="findings" className="tab-trigger">Findings</TabsTrigger>
-            <TabsTrigger value="products" className="tab-trigger">Products</TabsTrigger>
-            <TabsTrigger value="overview" className="tab-trigger">Overview</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 rounded-2xl bg-brand-bg/60 border border-brand-line p-1">
+            <TabsTrigger value="findings" className="rounded-xl text-base py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-brand-ink">
+              Findings
+            </TabsTrigger>
+            <TabsTrigger value="products" className="rounded-xl text-base py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-brand-ink">
+              Products
+            </TabsTrigger>
+            <TabsTrigger value="overview" className="rounded-xl text-base py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-brand-ink">
+              Overview
+            </TabsTrigger>
           </TabsList>
 
           {/* Findings */}
           <TabsContent value="findings" className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-brand-ink">Cost Optimization Findings</h2>
+              <h2 className="font-serif text-[26px] md:text-[28px] leading-tight font-semibold text-brand-ink tracking-tight">
+                Cost Optimization Findings
+              </h2>
               <Badge className="badge-brand text-brand-success border-brand-success/20">
                 {formatCurrency(kpis.savings_ready_usd)}/month potential
               </Badge>
             </div>
 
-            {findings.length === 0 ? (
+            {displayFindings.length === 0 ? (
               <Card className="kpi-card">
                 <CardContent className="text-center py-12">
                   <CheckCircle className="h-12 w-12 text-brand-success mx-auto mb-4" />
@@ -737,7 +761,7 @@ ${finding.suggested_action}
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {findings.map((f) => (
+                {displayFindings.map((f) => (
                   <FindingCard key={f.finding_id || `${f.title}-${f.resource_id || ""}`} finding={f} onViewDetails={handleViewDetails} />
                 ))}
               </div>
