@@ -202,7 +202,7 @@ h1{ font-weight:600; } h2{ font-weight:600; }
 .ccg-tab[data-state="active"]{
   background: #FFFFFF;
   color: #2F2A24;
-  border-color: #E9DFD3;        /* inner border; stays inside the track */
+  border-color: transparent;     /* no border when active */
   box-shadow: 0 1px 1px rgba(0,0,0,0.04);
 }
 
