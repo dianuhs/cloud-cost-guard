@@ -1,4 +1,4 @@
-/* App.css â€” Cloud & Capital theme (active pill fills track) */
+/* App.css — Cloud & Capital theme (active pill fills track) */
 
 /* Fonts */
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
@@ -212,3 +212,19 @@ h1{ font-weight:600; } h2{ font-weight:600; }
 @media (min-width: 768px){
   .ccg-tabs{ height: 40px; padding: 2px; }
 }
+
+/* -------------------------------------------------- */
+/* Evidence box (rectangular, subtle border, beige bg)*/
+/* -------------------------------------------------- */
+.evidence-box{
+  background: #FBF6F1;               /* flatter beige */
+  border: 1px solid #E7DCCF;         /* subtle border */
+  border-radius: 8px;                /* rectangle with light rounding */
+  padding: 12px;
+  font-size: 12px;
+}
+.evidence-box .evidence-label{
+  font-weight: 600;
+  margin-right: 4px;
+}
+
