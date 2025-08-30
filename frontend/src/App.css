@@ -1,4 +1,4 @@
-/* App.css â€” Cloud & Capital theme tuned to your spec (consolidated) */
+/* App.css â€” Cloud & Capital theme (balanced CSS) */
 
 /* Fonts */
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
@@ -24,9 +24,9 @@
 
   --radius-sm:8px;
   --radius-md:12px;
-  --radius-lg:20px;               /* rounder corners */
+  --radius-lg:20px;
   --shadow-sm:0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md:0 6px 16px rgba(10,10,10,0.06); /* deeper */
+  --shadow-md:0 6px 16px rgba(10,10,10,0.06);
 }
 
 /* Base */
@@ -47,22 +47,19 @@ body{
 }
 
 /* Brand block */
-.brand-logo{ height:44px; width:auto; display:block; border:1px solid var(--brand-line); border-radius:8px; background:#ECE5DE; }
+.brand-logo{
+  height:44px; width:auto; display:block;
+  border:1px solid var(--brand-line);
+  border-radius:8px; background:#ECE5DE;
+}
 .brand-title{
   font-family: "Playfair Display", Georgia, "Times New Roman", serif;
-  font-weight: 700;
-  font-size: 28px;
-  line-height: 1.1;
-  color: var(--brand-ink);
-  letter-spacing: 0.2px;
+  font-weight: 700; font-size: 28px; line-height: 1.1;
+  color: var(--brand-ink); letter-spacing: 0.2px;
 }
 .brand-subtitle{
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--brand-muted);
-  margin-top: 2px;
-  line-height: 1.1;
-  letter-spacing: 0.1px;
+  font-size: 16px; font-weight: 600; color: var(--brand-muted);
+  margin-top: 2px; line-height: 1.1; letter-spacing: 0.1px;
 }
 
 /* Palette hooks */
@@ -88,49 +85,25 @@ body{
 
 /* Buttons */
 .btn-brand-primary{
-  background:var(--brand-accent);
-  color:#fff; border:1px solid var(--brand-accent);
+  background:var(--brand-accent); color:#fff; border:1px solid var(--brand-accent);
   border-radius: var(--radius-md);
 }
 .btn-brand-primary:hover{ filter: brightness(0.95); }
 .btn-brand-outline{
-  background:#fff; color:var(--brand-ink);
-  border:1px solid var(--brand-line);
+  background:#fff; color:var(--brand-ink); border:1px solid var(--brand-line);
   border-radius: var(--radius-md);
 }
 .btn-brand-outline:hover{ background:#fafafa; }
 
 /* Badges */
 .badge-brand{
-  background: #EEF2FF;
-  color: #3730A3;
-  border: 1px solid #E5E7EB;
-  border-radius: 999px;
-  padding: 4px 8px;
-}
-
-/* (Legacy) Tabs â€” not used anymore by the JSX, safe to keep */
-.tabs-list{
-  background:#fff;
-  border:1px solid var(--brand-line);
-  border-radius: var(--radius-md);
-  padding:4px;
-}
-.tab-trigger{
-  border-radius: var(--radius-sm);
-  color:var(--brand-muted);
-}
-.tab-trigger[aria-selected="true"]{
-  background:var(--brand-bg);
-  color:var(--brand-ink);
-  box-shadow: inset 0 0 0 1px var(--brand-line);
+  background: #EEF2FF; color: #3730A3; border: 1px solid #E5E7EB;
+  border-radius: 999px; padding: 4px 8px;
 }
 
 /* Alerts */
 .alert-brand{
-  background: #EAF2FF;
-  border:1px solid #CFE0FF;
-  color:#1E3A8A;
+  background: #EAF2FF; border:1px solid #CFE0FF; color:#1E3A8A;
   border-radius: var(--radius-md);
 }
 
@@ -138,17 +111,12 @@ body{
 .table-brand table{ width:100%; border-collapse: collapse; }
 .table-brand thead th{
   border-bottom:1px solid var(--brand-line);
-  padding:12px 10px;
-  background:#FFFDFB;
-  font-weight:600;
-  font-size: 0.92rem;
-  color: var(--brand-muted);
+  padding:12px 10px; background:#FFFDFB; font-weight:600;
+  font-size: 0.92rem; color: var(--brand-muted);
 }
 .table-brand tbody td{
   border-bottom:1px solid var(--brand-line);
-  padding:12px 10px;
-  font-size: 0.95rem;
-  color: var(--brand-ink);
+  padding:12px 10px; font-size: 0.95rem; color: var(--brand-ink);
 }
 .table-brand tr:hover td{ background: rgba(233,227,222,0.25); }
 
@@ -196,23 +164,23 @@ h1{ font-weight:600; } h2{ font-weight:600; }
 /* Utilities to support custom widths used in JSX     */
 /* -------------------------------------------------- */
 .w-38 { width: 9.5rem; }
-@media (min-width: 768px) {
+@media (min-width: 768px){
   .md\:w-42 { width: 10.5rem; }
 }
 
 /* -------------------------------------------------- */
-/* Tabs (final): thinner + lighter cream, no wonkiness */
+/* Tabs (final): thinner + lighter cream              */
 /* -------------------------------------------------- */
 .ccg-tabs{
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  height: 36px;                 /* thinner */
+  height: 36px;
   align-items: center;
   gap: 6px;
   padding: 4px;
   background: #FCF7F1;          /* lighter beige */
   border: 1px solid #E9DFD3;    /* lighter border */
-  border-radius: 10px;          /* subtle rounding to match cards better */
+  border-radius: 10px;          /* subtle rounding to match cards */
   overflow: hidden;             /* keep pills inside */
 }
 
@@ -225,7 +193,7 @@ h1{ font-weight:600; } h2{ font-weight:600; }
   font-size: 14px;
   font-weight: 600;
   color: #8A7A6A;
-  border: 1px solid transparent;/* reserve space (no jump on active) */
+  border: 1px solid transparent;/* reserve space (no jump) */
   transition: color .15s ease, background .15s ease, border-color .15s ease;
   user-select: none;
 }
@@ -241,3 +209,4 @@ h1{ font-weight:600; } h2{ font-weight:600; }
 /* Optional: a hair taller on md+ screens */
 @media (min-width: 768px){
   .ccg-tabs{ height: 38px; padding: 5px; }
+}
