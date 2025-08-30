@@ -669,7 +669,7 @@ ${finding.suggested_action}
 
             <div className="flex items-center gap-2">
               <Select value={dateRange} onValueChange={setDateRange}>
-                <SelectTrigger className="w-40 md:w-44 btn-brand-outline rounded-2xl flex items-center justify-start px-4">
+                <SelectTrigger className="w-38 md:w-42 btn-brand-outline rounded-2xl flex items-center justify-start px-4">
                   <Calendar className="h-4 w-4 mr-2" />
                   <SelectValue placeholder="Last 30 days" />
                 </SelectTrigger>
@@ -752,18 +752,12 @@ ${finding.suggested_action}
           <KeyInsightsCard insights={keyInsights} />
         </div>
 
-        {/* Tabs */}
+        {/* Main Content Tabs */}
         <Tabs defaultValue="findings" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 rounded-2xl bg-[#F7F1EA] border border-[#E7DCCF] p-1 shadow-inner">
-            <TabsTrigger value="findings" className="rounded-xl text-base py-2 px-4 text-[#827464] hover:text-[#2F2A24] transition-colors data-[state=active]:bg-white data-[state=active]:text-[#2F2A24] data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-[#E7DCCF]">
-              Findings
-            </TabsTrigger>
-            <TabsTrigger value="products" className="rounded-xl text-base py-2 px-4 text-[#827464] hover:text-[#2F2A24] transition-colors data-[state=active]:bg-white data-[state=active]:text-[#2F2A24] data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-[#E7DCCF]">
-              Products
-            </TabsTrigger>
-            <TabsTrigger value="overview" className="rounded-xl text-base py-2 px-4 text-[#827464] hover:text-[#2F2A24] transition-colors data-[state=active]:bg-white data-[state=active]:text-[#2F2A24] data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-[#E7DCCF]">
-              Overview
-            </TabsTrigger>
+          <TabsList className="tabs-list grid w-full grid-cols-3">
+            <TabsTrigger value="findings" className="tab-trigger">Findings</TabsTrigger>
+            <TabsTrigger value="products" className="tab-trigger">Products</TabsTrigger>
+            <TabsTrigger value="overview" className="tab-trigger">Overview</TabsTrigger>
           </TabsList>
 
           {/* Findings */}
