@@ -234,7 +234,7 @@ h1{ font-weight:600; } h2{ font-weight:600; }
   border: 1px solid var(--brand-line) !important;
   border-radius: var(--radius-md) !important;
   padding: 0.75rem !important;
-  font-size: 0.85rem !important;
+  font-size: 0.8rem !important;
 }
 .finding-card .evidence-box div { margin-bottom: 2px !important; }
 .finding-card .evidence-box .font-mono { font-weight: 500 !important; }
