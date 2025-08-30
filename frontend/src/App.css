@@ -1,4 +1,4 @@
-/* App.css â€” Cloud & Capital theme (balanced CSS) */
+/* App.css â€” Cloud & Capital theme (active pill fills track) */
 
 /* Fonts */
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
@@ -160,28 +160,29 @@ h1{ font-weight:600; } h2{ font-weight:600; }
 .rounded-lg{ border-radius: var(--radius-lg); }
 .hover\:shadow-brand-md:hover{ box-shadow: var(--shadow-md); }
 
-/* -------------------------------------------------- */
-/* Utilities to support custom widths used in JSX     */
-/* -------------------------------------------------- */
+/* Utilities for custom widths used in JSX */
 .w-38 { width: 9.5rem; }
 @media (min-width: 768px){
   .md\:w-42 { width: 10.5rem; }
 }
 
+/* Use the same serif as the header title when needed */
+.font-brand-serif{ font-family: "Playfair Display", Georgia, "Times New Roman", serif; }
+
 /* -------------------------------------------------- */
-/* Tabs (final): thinner + lighter cream              */
+/* Tabs (final): pill fills the track height           */
 /* -------------------------------------------------- */
 .ccg-tabs{
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  height: 36px;
+  height: 38px;                 /* slightly taller */
   align-items: center;
   gap: 6px;
-  padding: 4px;
+  padding: 2px;                 /* minimal padding so pill fills track */
   background: #FCF7F1;          /* lighter beige */
   border: 1px solid #E9DFD3;    /* lighter border */
-  border-radius: 10px;          /* subtle rounding to match cards */
-  overflow: hidden;             /* keep pills inside */
+  border-radius: 10px;          /* match pill radius */
+  overflow: hidden;
 }
 
 .ccg-tab{
@@ -189,7 +190,7 @@ h1{ font-weight:600; } h2{ font-weight:600; }
   align-items: center;
   justify-content: center;
   height: 100%;
-  border-radius: 8px;           /* slightly less than track */
+  border-radius: 10px;          /* same curve as track */
   font-size: 14px;
   font-weight: 600;
   color: #8A7A6A;
@@ -199,19 +200,15 @@ h1{ font-weight:600; } h2{ font-weight:600; }
 }
 .ccg-tab:hover{ color: #2F2A24; }
 
+/* Active pill: white, thick, inner ring accent */
 .ccg-tab[data-state="active"]{
   background: #FFFFFF;
   color: #2F2A24;
-  border-color: transparent;     /* keep layout thickness */
-  /* draw an INNER 2px ring to match the design without changing size */
-  box-shadow: inset 0 0 0 2px #8B6F47, 0 1px 1px rgba(0,0,0,0.04);
+  border-color: transparent;     /* keep same thickness */
+  box-shadow: inset 0 0 0 2px #8B6F47;  /* inner accent ring */
 }
 
-/* Optional: a hair taller on md+ screens */
+/* optional: a touch taller on md+ screens */
 @media (min-width: 768px){
-  .ccg-tabs{ height: 38px; padding: 5px; }
+  .ccg-tabs{ height: 40px; padding: 2px; }
 }
-
-
-/* Utility: use the same serif as the header title */
-.font-brand-serif{ font-family: "Playfair Display", Georgia, "Times New Roman", serif; }
