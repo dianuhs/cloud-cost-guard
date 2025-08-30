@@ -98,6 +98,7 @@ const getSeverityIcon = (severity) => {
   if (s === "low") return <CheckCircle className="h-4 w-4 text-brand-success" />;
   return <AlertTriangle className="h-4 w-4" />;
 };
+
 /* Choose the most relevant command to display for a finding */
 const pickBestCommand = (f) => {
   const cmds = Array.isArray(f?.commands) ? f.commands : [];
@@ -128,17 +129,18 @@ const pickBestCommand = (f) => {
 
 
 /* -------- Findings sort/pick -------- */
+/* Sort by highest savings first (most actionable), then severity */
 const SEVERITY_ORDER = { critical: 0, high: 1, medium: 2, low: 3 };
 const sortAndPickFindings = (arr, limit = 9) => {
   const safe = Array.isArray(arr) ? arr : [];
   return [...safe]
     .sort((a, b) => {
-      const sa = SEVERITY_ORDER[String(a.severity || "").toLowerCase()] ?? 99;
-      const sb = SEVERITY_ORDER[String(b.severity || "").toLowerCase()] ?? 99;
-      if (sa !== sb) return sa - sb;
       const va = toNumber(a.monthly_savings_usd_est);
       const vb = toNumber(b.monthly_savings_usd_est);
-      return vb - va;
+      if (vb !== va) return vb - va; // savings desc
+      const sa = SEVERITY_ORDER[String(a.severity || "").toLowerCase()] ?? 99;
+      const sb = SEVERITY_ORDER[String(b.severity || "").toLowerCase()] ?? 99;
+      return sa - sb; // severity as tiebreaker
     })
     .slice(0, limit);
 };
@@ -351,10 +353,10 @@ const FindingCard = ({ finding, onViewDetails }) => (
         </div>
 
         {finding.evidence && (finding.evidence.resource_id || finding.evidence.region || finding.evidence.instance_type) && (
-          <div className="text-xs bg-brand-bg/30 p-2 rounded border border-brand-line">
-            {finding.evidence.resource_id && <div className="font-mono text-brand-muted">Resource: {finding.evidence.resource_id}</div>}
-            {finding.evidence.region && <div className="text-brand-muted">Region: {finding.evidence.region}</div>}
-            {finding.evidence.instance_type && <div className="text-brand-muted">Type: {finding.evidence.instance_type}</div>}
+          <div className="evidence-box">
+            {finding.evidence.resource_id && <div className="font-mono text-brand-muted"><span className="evidence-label">Resource:</span> {finding.evidence.resource_id}</div>}
+            {finding.evidence.region && <div className="text-brand-muted"><span className="evidence-label">Region:</span> {finding.evidence.region}</div>}
+            {finding.evidence.instance_type && <div className="text-brand-muted"><span className="evidence-label">Type:</span> {finding.evidence.instance_type}</div>}
           </div>
         )}
 
@@ -564,7 +566,7 @@ const Dashboard = () => {
   const handleViewDetails = (finding) => {
     const evidence = JSON.stringify(finding.evidence, null, 2);
     const assumptions = Array.isArray(finding.assumptions) && finding.assumptions.length
-      ? finding.assumptions.join("\n• ") : "None specified";
+      ? finding.assumptions.join("\\n• ") : "None specified";
     const details = `
 FINDING DETAILS
 ==============
@@ -592,7 +594,7 @@ ASSUMPTIONS
 
 RECOMMENDED COMMANDS
 ===================
-${Array.isArray(finding.commands) ? finding.commands.join("\n") : "No specific commands provided"}
+${Array.isArray(finding.commands) ? finding.commands.join("\\n") : "No specific commands provided"}
 
 ACTION REQUIRED
 ===============
@@ -605,11 +607,13 @@ ${finding.suggested_action}
     try {
       const { data } = await axios.get(`${API}/findings?sort=savings&limit=1000`);
       const arr = Array.isArray(data) ? data : [];
+      // Only export rows that actually save money
+      const rowsToExport = arr.filter((f) => toNumber(f.monthly_savings_usd_est) > 0);
       const headers = ["Title", "Type", "Severity", "Monthly Savings", "Resource ID", "Action"];
-      const rows = arr.map((f) => [
+      const rows = rowsToExport.map((f) => [
         f.title, f.type, f.severity, f.monthly_savings_usd_est, f.resource_id || "", f.suggested_action
       ]);
-      const csv = [headers, ...rows].map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+      const csv = [headers, ...rows].map(r => r.map(v => `\"${String(v ?? "").replace(/\"/g, '\"\"')}\"`).join(",")).join("\\n");
       const blob = new Blob([csv], { type: "text/csv" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -651,7 +655,10 @@ ${finding.suggested_action}
     dateRange === "7d"  ? "Cost trends over the last 7 days"  :
                           "Cost trends over the last 90 days";
 
-  const displayFindings = sortAndPickFindings(findings, 9);
+  // --- New: filter out non-saving findings and recompute Savings Ready to match cards ---
+  const positiveFindings = (Array.isArray(findings) ? findings : []).filter(f => toNumber(f.monthly_savings_usd_est) > 0);
+  const displayFindings = sortAndPickFindings(positiveFindings, 9);
+  const savingsReady = positiveFindings.reduce((acc, f) => acc + toNumber(f.monthly_savings_usd_est), 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand-bg to-brand-light">
@@ -719,7 +726,7 @@ ${finding.suggested_action}
           />
           <KPICard
             title="Savings Ready"
-            value={formatCurrency(kpis.savings_ready_usd)}
+            value={formatCurrency(savingsReady)}   {/* now matches the cards */}
             icon={TrendingDown}
             subtitle="potential monthly savings"
             dataFreshness={kpis.data_freshness_hours}
@@ -773,7 +780,7 @@ ${finding.suggested_action}
                 Cost Optimization Findings
               </h2>
               <Badge className="badge-brand text-brand-success border-brand-success/20">
-                {formatCurrency(kpis.savings_ready_usd)}/month potential
+                {formatCurrency(savingsReady)}/month potential
               </Badge>
             </div>
 
@@ -845,7 +852,7 @@ ${finding.suggested_action}
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {(Array.isArray(recent_findings) ? recent_findings.slice(0, 5) : []).map((f, i) => (
+                    {(Array.isArray(recent_findings) ? recent_findings.filter(f => toNumber(f.monthly_savings_usd_est) > 0).slice(0, 5) : []).map((f, i) => (
                       <div key={i} className="flex items-center justify-between p-3 bg-brand-bg/50 rounded-lg border border-brand-line">
                         <div className="flex items-center gap-2">
                           {getSeverityIcon(f.severity)}
@@ -876,3 +883,4 @@ export default function App() {
     </div>
   );
 }
+
