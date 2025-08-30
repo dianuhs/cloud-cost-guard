@@ -145,6 +145,33 @@ const sortAndPickFindings = (arr, limit = 9) => {
     .slice(0, limit);
 };
 
+/* -------- Classifiers for KPI alignment -------- */
+const isUnderUtil = (f) => {
+  const t = String(f.type || "").toLowerCase();
+  const title = String(f.title || "").toLowerCase();
+  return (
+    t.includes("under") ||
+    t.includes("idle") ||
+    title.includes("under-util") ||
+    title.includes("underutil") ||
+    (title.includes("cpu") && title.includes("util"))
+  );
+};
+
+const isOrphaned = (f) => {
+  const t = String(f.type || "").toLowerCase();
+  const title = String(f.title || "").toLowerCase();
+  return (
+    t.includes("orphan") ||
+    title.includes("unattached") ||
+    title.includes("unused elastic ip") ||
+    (title.includes("elastic ip") && title.includes("unused")) ||
+    title.includes("unused eip") ||
+    title.includes("orphan")
+  );
+};
+
+
 /* -------- Presentational components -------- */
 const KPICard = ({ title, value, change, icon: Icon, subtitle, dataFreshness }) => (
   <Card className="kpi-card hover:shadow-brand-md transition-all duration-200">
@@ -659,6 +686,8 @@ ${finding.suggested_action}
   const positiveFindings = (Array.isArray(findings) ? findings : []).filter(f => toNumber(f.monthly_savings_usd_est) > 0);
   const displayFindings = sortAndPickFindings(positiveFindings, 9);
   const savingsReady = positiveFindings.reduce((acc, f) => acc + toNumber(f.monthly_savings_usd_est), 0);
+  const uiUnderutilized = positiveFindings.filter(isUnderUtil).length;
+  const uiOrphans = positiveFindings.filter(isOrphaned).length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand-bg to-brand-light">
@@ -733,14 +762,14 @@ ${finding.suggested_action}
           />
           <KPICard
             title="Under-utilized"
-            value={kpis.underutilized_count}
+            value={uiUnderutilized}
             icon={Server}
             subtitle="compute resources"
             dataFreshness={kpis.data_freshness_hours}
           />
           <KPICard
             title="Orphaned Resources"
-            value={kpis.orphans_count}
+            value={uiOrphans}
             icon={HardDrive}
             subtitle="unattached volumes"
             dataFreshness={kpis.data_freshness_hours}
