@@ -170,7 +170,7 @@ const ServiceBreakdownChart = ({ data }) => (
                 {data.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
               </Pie>
               <Tooltip
-                contentStyle={{ backgroundColor: "#FFF", border: "1px solid "#E9E3DE", borderRadius: 8, color: "#0A0A0A" }}
+                contentStyle={{ backgroundColor: "#FFF", border: "1px solid #E9E3DE", borderRadius: 8, color: "#0A0A0A" }}
                 formatter={(val, _name, props) => [formatCurrency(val), `${props.payload.name} (${props.payload.percentage}%)`]}
               />
             </PieChart>
