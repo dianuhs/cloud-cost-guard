@@ -92,11 +92,12 @@ const getSeverityColor = (severity) => ({
 
 const getSeverityIcon = (severity) => {
   const s = String(severity || "").toLowerCase();
-  if (s === "critical") return <XCircle className="h-4 w-4 text-brand-error" />;
-  if (s === "high") return <AlertTriangle className="h-4 w-4" style={{ color: "#B5905C" }} />;
-  if (s === "medium") return <AlertTriangle className="h-4 w-4 text-brand-warning" />;
-  if (s === "low") return <CheckCircle className="h-4 w-4 text-brand-success" />;
-  return <AlertTriangle className="h-4 w-4" />;
+  const common = "severity-icon";
+  if (s === "critical") return <XCircle className={`${common} severity-icon--critical`} />;
+  if (s === "high") return <AlertTriangle className={`${common} severity-icon--high`} />;
+  if (s === "medium") return <AlertTriangle className={`${common} severity-icon--medium`} />;
+  if (s === "low") return <CheckCircle className={`${common} severity-icon--low`} />;
+  return <AlertTriangle className={common} />;
 };
 
 /* Choose the most relevant command to display for a finding */
