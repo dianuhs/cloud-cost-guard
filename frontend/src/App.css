@@ -192,3 +192,38 @@ h1{ font-weight:600; } h2{ font-weight:600; }
 .rounded-lg{ border-radius: var(--radius-lg); }
 .hover\:shadow-brand-md:hover{ box-shadow: var(--shadow-md); }
 
+/* --- Tabs: rock-solid look & sizing --- */
+.ccg-tabs{
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  height: 44px; /* matches the card vibe */
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  background: #FAF4EE;           /* soft cream track */
+  border: 1px solid #E7DCCF;     /* subtle line */
+  border-radius: 12px;           /* match card-ish radius */
+  overflow: hidden;              /* keep pills inside */
+}
+
+.ccg-tab{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  border-radius: 10px;           /* slightly less than track */
+  font-size: 14px;
+  font-weight: 600;
+  color: #8A7A6A;
+  border: 1px solid transparent; /* prevents layout shift */
+  transition: color .15s ease, background .15s ease, border-color .15s ease;
+}
+.ccg-tab:hover{ color: #2F2A24; }
+
+.ccg-tab[data-state="active"]{
+  background: #FFFFFF;
+  color: #2F2A24;
+  border-color: #E7DCCF;         /* inner border; stays inside the track */
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06); /* tiny depth */
+}
+
