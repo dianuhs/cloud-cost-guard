@@ -98,50 +98,6 @@ const getSeverityIcon = (severity) => {
   if (s === "low") return <CheckCircle className="h-4 w-4 text-brand-success" />;
   return <AlertTriangle className="h-4 w-4" />;
 };
-/* Choose the most relevant command to display for a finding */
-const pickBestCommand = (f) => {
-  const cmds = Array.isArray(f?.commands) ? f.commands : [];
-  if (!cmds.length) return null;
-  const lcTitle = String(f?.title || "").toLowerCase();
-  const lcType  = String(f?.type  || "").toLowerCase();
-  const serviceHints = [
-    { hint: ["ec2","instance","underutilized","autoscaling"], match: /aws\s+ec2|autoscaling/i },
-    { hint: ["ebs","volume","unattached"],                     match: /aws\s+ec2.*(describe-volumes|delete-volume)/i },
-    { hint: ["eip","elastic ip"],                              match: /aws\s+ec2.*(describe-addresses|release-address)/i },
-    { hint: ["rds","db"],                                      match: /aws\s+rds/i },
-    { hint: ["s3","bucket"],                                   match: /aws\s+s3|s3api/i },
-    { hint: ["lambda"],                                        match: /aws\s+(logs|lambda)/i },
-    { hint: ["elb","load balancer"],                           match: /aws\s+elbv2/i },
-    { hint: ["cloudwatch","anomaly","ce"],                     match: /aws\s+ce\s+get-cost-and-usage/i },
-    { hint: ["nat"],                                           match: /aws\s+ec2.*nat/i },
-  ];
-  for (const s of serviceHints) {
-    if (s.hint.some(h => lcTitle.includes(h) || lcType.includes(h))) {
-      const found = cmds.find(c => s.match.test(c));
-      if (found) return found;
-    }
-  }
-  const ce = cmds.find(c => /aws\s+ce\s+get-cost-and-usage/i.test(c));
-  if (ce) return ce;
-  return cmds[0];
-};
-
-
-/* -------- Findings sort/pick -------- */
-const SEVERITY_ORDER = { critical: 0, high: 1, medium: 2, low: 3 };
-const sortAndPickFindings = (arr, limit = 9) => {
-  const safe = Array.isArray(arr) ? arr : [];
-  return [...safe]
-    .sort((a, b) => {
-      const sa = SEVERITY_ORDER[String(a.severity || "").toLowerCase()] ?? 99;
-      const sb = SEVERITY_ORDER[String(b.severity || "").toLowerCase()] ?? 99;
-      if (sa !== sb) return sa - sb;
-      const va = toNumber(a.monthly_savings_usd_est);
-      const vb = toNumber(b.monthly_savings_usd_est);
-      return vb - va;
-    })
-    .slice(0, limit);
-};
 
 /* -------- Presentational components -------- */
 const KPICard = ({ title, value, change, icon: Icon, subtitle, dataFreshness }) => (
@@ -323,64 +279,83 @@ const KeyInsightsCard = ({ insights }) => {
   );
 };
 
-const FindingCard = ({ finding, onViewDetails }) => (
-  <Card className="finding-card">
-    <CardHeader className="pb-3">
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-2">
-          {getSeverityIcon(finding.severity)}
-          <CardTitle className="text-sm font-medium text-brand-ink">{finding.title}</CardTitle>
-        </div>
-        <div className="flex flex-col gap-1">
-          <Badge className={getSeverityColor(finding.severity) + " px-2 py-1 text-xs font-medium rounded-md"}>
-            {String(finding.severity || "").toUpperCase()}
-          </Badge>
-          {finding.confidence && (
-            <Badge className={getConfidenceColor(finding.confidence) + " px-2 py-1 text-xs rounded-md"}>
-              {String(finding.confidence).replace("_", " ").toUpperCase()} CONF
-            </Badge>
-          )}
-        </div>
-      </div>
-    </CardHeader>
-    <CardContent>
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-brand-muted">Monthly Savings</span>
-          <span className="text-lg font-semibold text-brand-success">{formatCurrency(finding.monthly_savings_usd_est)}</span>
-        </div>
+const FindingCard = ({ finding, onViewDetails }) => {
+  const savings = toNumber(finding?.monthly_savings_usd_est);
 
-        {finding.evidence && (finding.evidence.resource_id || finding.evidence.region || finding.evidence.instance_type) && (
-          <div className="text-xs bg-brand-bg/30 p-2 rounded border border-brand-line">
-            {finding.evidence.resource_id && <div className="font-mono text-brand-muted">Resource: {finding.evidence.resource_id}</div>}
-            {finding.evidence.region && <div className="text-brand-muted">Region: {finding.evidence.region}</div>}
-            {finding.evidence.instance_type && <div className="text-brand-muted">Type: {finding.evidence.instance_type}</div>}
+  return (
+    <Card className="finding-card">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-2">
+            {getSeverityIcon(finding.severity)}
+            <CardTitle className="text-sm font-medium text-brand-ink">{finding.title}</CardTitle>
           </div>
-        )}
-
-        <div className="flex justify-between text-xs">
-          <span className="text-brand-muted">Risk: <span className={getRiskColor(finding.risk_level)}>{finding.risk_level}</span></span>
-          {finding.implementation_time && <span className="text-brand-muted">Time: {finding.implementation_time}</span>}
+          <div className="flex flex-col gap-1">
+            <Badge className={getSeverityColor(finding.severity) + " px-2 py-1 text-xs font-medium rounded-md"}>
+              {String(finding.severity || "").toUpperCase()}
+            </Badge>
+            {finding.confidence && (
+              <Badge className={getConfidenceColor(finding.confidence) + " px-2 py-1 text-xs rounded-md"}>
+                {String(finding.confidence).replace("_", " ").toUpperCase()} CONF
+              </Badge>
+            )}
+          </div>
         </div>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {/* Savings or Investigation */}
+          {savings > 0 ? (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-brand-muted">Monthly Savings</span>
+              <span className="text-lg font-semibold text-brand-success">{formatCurrency(savings)}</span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-brand-muted">No immediate savings</span>
+              <Badge
+                className="px-2 py-1 text-xs rounded-md"
+                style={{ background: "#FFF7ED", color: "#92400E", border: "1px solid #FDE68A" }}
+              >
+                Investigation
+              </Badge>
+            </div>
+          )}
 
-        {finding.suggested_action && <p className="text-sm text-brand-ink">{finding.suggested_action}</p>}
+          {finding.evidence && (finding.evidence.resource_id || finding.evidence.region || finding.evidence.instance_type) && (
+            <div className="text-xs bg-brand-bg/30 p-2 rounded border border-brand-line">
+              {finding.evidence.resource_id && <div className="font-mono text-brand-muted">Resource: {finding.evidence.resource_id}</div>}
+              {finding.evidence.region && <div className="text-brand-muted">Region: {finding.evidence.region}</div>}
+              {finding.evidence.instance_type && <div className="text-brand-muted">Type: {finding.evidence.instance_type}</div>}
+            </div>
+          )}
 
-        {finding.commands && finding.commands.length > 0 && (
-          <div className="p-3 rounded-lg border border-[#E7DCCF] bg-[#F7F1EA]"><code className="text-xs font-mono text-brand-ink">{pickBestCommand(finding)}</code></div>
-        )}
+          <div className="flex justify-between text-xs">
+            <span className="text-brand-muted">Risk: <span className={getRiskColor(finding.risk_level)}>{finding.risk_level}</span></span>
+            {finding.implementation_time && <span className="text-brand-muted">Time: {finding.implementation_time}</span>}
+          </div>
 
-        <div className="flex items-center justify-between text-xs text-brand-muted">
-          {finding.last_analyzed && <span>Analyzed: {formatTimestamp(finding.last_analyzed)}</span>}
+          {finding.suggested_action && <p className="text-sm text-brand-ink">{finding.suggested_action}</p>}
+
+          {finding.commands && finding.commands.length > 0 && (
+            <div className="bg-brand-bg p-3 rounded-lg border border-brand-line">
+              <code className="text-xs font-mono text-brand-ink">{finding.commands[0]}</code>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between text-xs text-brand-muted">
+            {finding.last_analyzed && <span>Analyzed: {formatTimestamp(finding.last_analyzed)}</span>}
+          </div>
+
+          <Button variant="outline" size="sm" onClick={() => onViewDetails(finding)} className="w-full btn-brand-outline">
+            <Eye className="h-3 w-3 mr-1" />
+            View Details & Methodology
+          </Button>
         </div>
-
-        <Button variant="outline" size="sm" onClick={() => onViewDetails(finding)} className="w-full btn-brand-outline">
-          <Eye className="h-3 w-3 mr-1" />
-          View Details & Methodology
-        </Button>
-      </div>
-    </CardContent>
-  </Card>
-);
+      </CardContent>
+    </Card>
+  );
+};
 
 const ProductTable = ({ products }) => (
   <div className="table-brand rounded-lg">
@@ -429,6 +404,10 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dateRange, setDateRange] = useState("30d");
+
+  // New: investigations toggle + derived savings
+  const [showInvestigations, setShowInvestigations] = useState(false);
+  const [derivedSavings, setDerivedSavings] = useState(0);
 
   useEffect(() => {
     loadAllData();
@@ -498,7 +477,16 @@ const Dashboard = () => {
       const kpis = sum.kpis || {};
       const products = Array.isArray(sum.top_products) ? sum.top_products : [];
       setSummary(sum);
-      setFindings(Array.isArray(fndRes.data) ? fndRes.data : []);
+
+      const arr = Array.isArray(fndRes.data) ? fndRes.data : [];
+      setFindings(arr);
+
+      // keep badge consistent with cards on screen (positive savings only)
+      const derived = arr.reduce((s, f) => {
+        const v = toNumber(f?.monthly_savings_usd_est);
+        return s + (v > 0 ? v : 0);
+      }, 0);
+      setDerivedSavings(derived);
 
       const moversNorm = normalizeMovers(mvRes.data, products);
       setTopMovers(moversNorm);
@@ -517,7 +505,7 @@ const Dashboard = () => {
       });
       setServiceBreakdown({ data: breakdown, total });
 
-      // Daily Spend Trend: prefer backend if present on summary; otherwise synthesize from totals
+      // Daily Spend Trend: prefer backend if present on summary; otherwise synthesize
       let series = [];
       const daily = Array.isArray(sum.daily_series) ? sum.daily_series : [];
       if (daily.length) {
@@ -544,7 +532,7 @@ const Dashboard = () => {
         { date: "-", dateISO: null, amount: 0 }
       );
       const totalWindow = series.reduce((s, pt) => s + pt.cost, 0);
-      const monthBudget = 180000; // fixed as requested
+      const monthBudget = 180000; // fixed for now
       setKeyInsights({
         highest_single_day: highest,
         projected_month_end: totalWindow,
@@ -560,6 +548,18 @@ const Dashboard = () => {
       setLoading(false);
     }
   };
+
+  // Sort + filter for Findings
+  const severityRank = { critical: 0, high: 1, medium: 2, low: 3 };
+  const sortedFindings = [...findings].sort((a, b) => {
+    const sa = severityRank[String(a?.severity || '').toLowerCase()] ?? 99;
+    const sb = severityRank[String(b?.severity || '').toLowerCase()] ?? 99;
+    if (sa !== sb) return sa - sb;
+    return toNumber(b?.monthly_savings_usd_est) - toNumber(a?.monthly_savings_usd_est);
+  });
+  const savingsOnly = sortedFindings.filter(f => toNumber(f?.monthly_savings_usd_est) > 0);
+  const investigations = sortedFindings.filter(f => toNumber(f?.monthly_savings_usd_est) <= 0);
+  const displayFindings = showInvestigations ? sortedFindings : savingsOnly;
 
   const handleViewDetails = (finding) => {
     const evidence = JSON.stringify(finding.evidence, null, 2);
@@ -651,8 +651,6 @@ ${finding.suggested_action}
     dateRange === "7d"  ? "Cost trends over the last 7 days"  :
                           "Cost trends over the last 90 days";
 
-  const displayFindings = sortAndPickFindings(findings, 9);
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand-bg to-brand-light">
       {/* Header */}
@@ -671,7 +669,7 @@ ${finding.suggested_action}
               <Select value={dateRange} onValueChange={setDateRange}>
                 <SelectTrigger className="w-38 md:w-42 btn-brand-outline rounded-2xl flex items-center justify-start px-4">
                   <Calendar className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Last 30 days" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="7d">Last 7 days</SelectItem>
@@ -679,12 +677,10 @@ ${finding.suggested_action}
                   <SelectItem value="90d">Last 90 days</SelectItem>
                 </SelectContent>
               </Select>
-
               <Button variant="outline" onClick={exportCSV} className="btn-brand-outline rounded-2xl">
                 <Download className="h-4 w-4 mr-2" />
                 Export CSV
               </Button>
-
               <Button onClick={loadAllData} className="btn-brand-primary rounded-2xl">
                 <Activity className="h-4 w-4 mr-2" />
                 Refresh
@@ -719,7 +715,7 @@ ${finding.suggested_action}
           />
           <KPICard
             title="Savings Ready"
-            value={formatCurrency(kpis.savings_ready_usd)}
+            value={formatCurrency(derivedSavings)}   /* derived from cards */
             icon={TrendingDown}
             subtitle="potential monthly savings"
             dataFreshness={kpis.data_freshness_hours}
@@ -755,15 +751,9 @@ ${finding.suggested_action}
         {/* Tabs */}
         <Tabs defaultValue="findings" className="space-y-6">
           <TabsList className="ccg-tabs">
-            <TabsTrigger value="findings" className="ccg-tab">
-              Findings
-            </TabsTrigger>
-            <TabsTrigger value="products" className="ccg-tab">
-              Products
-            </TabsTrigger>
-            <TabsTrigger value="overview" className="ccg-tab">
-              Overview
-            </TabsTrigger>
+            <TabsTrigger value="findings" className="ccg-tab">Findings</TabsTrigger>
+            <TabsTrigger value="products" className="ccg-tab">Products</TabsTrigger>
+            <TabsTrigger value="overview" className="ccg-tab">Overview</TabsTrigger>
           </TabsList>
 
           {/* Findings */}
@@ -772,9 +762,20 @@ ${finding.suggested_action}
               <h2 className="font-brand-serif text-[18px] md:text-[20px] leading-tight font-semibold text-brand-ink tracking-tight">
                 Cost Optimization Findings
               </h2>
-              <Badge className="badge-brand text-brand-success border-brand-success/20">
-                {formatCurrency(kpis.savings_ready_usd)}/month potential
-              </Badge>
+
+              <div className="flex items-center gap-2">
+                <Badge className="badge-brand text-brand-success border-brand-success/20">
+                  {formatCurrency(derivedSavings)}/month potential
+                </Badge>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowInvestigations(v => !v)}
+                  className="btn-brand-outline"
+                >
+                  {showInvestigations ? "Hide Investigations" : `Show Investigations (${investigations.length})`}
+                </Button>
+              </div>
             </div>
 
             {displayFindings.length === 0 ? (
@@ -782,7 +783,7 @@ ${finding.suggested_action}
                 <CardContent className="text-center py-12">
                   <CheckCircle className="h-12 w-12 text-brand-success mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-brand-ink mb-2">All Optimized!</h3>
-                  <p className="text-brand-muted">No cost optimization opportunities found at this time.</p>
+                  <p className="text-brand-muted">No immediate savings opportunities right now.</p>
                 </CardContent>
               </Card>
             ) : (
