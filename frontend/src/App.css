@@ -210,3 +210,7 @@ h1{ font-weight:600; } h2{ font-weight:600; }
 @media (min-width: 768px){
   .ccg-tabs{ height: 38px; padding: 5px; }
 }
+
+
+/* Utility: use the same serif as the header title */
+.font-brand-serif{ font-family: "Playfair Display", Georgia, "Times New Roman", serif; }
