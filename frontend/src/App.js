@@ -612,41 +612,45 @@ ${finding.suggested_action}
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand-bg to-brand-light">
       {/* Header */}
-      <div className="nav-header">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center gap-2">
-  <Select value={dateRange} onValueChange={setDateRange}>
-    <SelectTrigger className="w-44 md:w-52 btn-brand-outline rounded-2xl flex items-center justify-start">
-      <Calendar className="h-4 w-4 mr-2" />
-      <SelectValue placeholder="Last 30 days" />
-    </SelectTrigger>
-    <SelectContent>
-      <SelectItem value="7d">Last 7 days</SelectItem>
-      <SelectItem value="30d">Last 30 days</SelectItem>
-      <SelectItem value="90d">Last 90 days</SelectItem>
-    </SelectContent>
-  </Select>
-
-  <Button variant="outline" onClick={exportCSV} className="btn-brand-outline rounded-2xl">
-    <Download className="h-4 w-4 mr-2" />
-    Export CSV
-  </Button>
-
-  <Button onClick={loadAllData} className="btn-brand-primary rounded-2xl">
-    <Activity className="h-4 w-4 mr-2" />
-    Refresh
-  </Button>
-</div>
-
-
-              <Button onClick={loadAllData} className="btn-brand-primary">
-                <Activity className="h-4 w-4 mr-2" />
-                Refresh
-              </Button>
-            </div>
-          </div>
+<div className="nav-header">
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <img src={logo} alt="Cloud & Capital" className="brand-logo" />
+        <div className="leading-tight">
+          <h1 className="brand-title">Cloud Cost Guard</h1>
+          <p className="text-[15px] text-brand-muted">Multi-cloud cost optimization</p>
         </div>
       </div>
+
+      {/* Controls */}
+      <div className="flex items-center gap-2">
+        <Select value={dateRange} onValueChange={setDateRange}>
+          <SelectTrigger className="w-44 md:w-52 btn-brand-outline rounded-2xl flex items-center justify-start">
+            <Calendar className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Last 30 days" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="7d">Last 7 days</SelectItem>
+            <SelectItem value="30d">Last 30 days</SelectItem>
+            <SelectItem value="90d">Last 90 days</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Button variant="outline" onClick={exportCSV} className="btn-brand-outline rounded-2xl">
+          <Download className="h-4 w-4 mr-2" />
+          Export CSV
+        </Button>
+
+        <Button onClick={loadAllData} className="btn-brand-primary rounded-2xl">
+          <Activity className="h-4 w-4 mr-2" />
+          Refresh
+        </Button>
+      </div>
+    </div>
+  </div>
+</div>
+
 
       {/* Body */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
