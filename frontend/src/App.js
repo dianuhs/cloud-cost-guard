@@ -769,7 +769,7 @@ ${finding.suggested_action}
           {/* Findings */}
           <TabsContent value="findings" className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="font-serif text-[18px] md:text-[20px] leading-tight font-semibold text-brand-ink tracking-tight">
+              <h2 className="font-brand-serif text-[18px] md:text-[20px] leading-tight font-semibold text-brand-ink tracking-tight">
                 Cost Optimization Findings
               </h2>
               <Badge className="badge-brand text-brand-success border-brand-success/20">
