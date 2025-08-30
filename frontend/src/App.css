@@ -1,4 +1,4 @@
-/* App.css — Cloud & Capital theme tuned to your spec */
+/* App.css â€” Cloud & Capital theme tuned to your spec (consolidated) */
 
 /* Fonts */
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
@@ -11,7 +11,7 @@
   --brand-line:#E9E3DE;
   --brand-card:#FFFFFF;
 
-  /* Solid beige background as requested */
+  /* Solid beige background */
   --brand-bg:#f5eee9;
   --brand-light:#f5eee9;
 
@@ -35,7 +35,7 @@ body{
   margin:0;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
   color:var(--brand-ink);
-  background: var(--brand-bg); /* exact beige */
+  background: var(--brand-bg);
 }
 
 /* Header (white top bar) */
@@ -57,7 +57,7 @@ body{
   letter-spacing: 0.2px;
 }
 .brand-subtitle{
-  font-size: 16px;               /* bumped to align visually with title width */
+  font-size: 16px;
   font-weight: 600;
   color: var(--brand-muted);
   margin-top: 2px;
@@ -81,7 +81,7 @@ body{
 .kpi-card{
   background:var(--brand-card);
   border:1px solid var(--brand-line);
-  border-radius:var(--radius-lg);         /* rounder */
+  border-radius:var(--radius-lg);
   box-shadow: var(--shadow-sm);
 }
 .kpi-card:hover{ box-shadow: var(--shadow-md); }
@@ -109,7 +109,7 @@ body{
   padding: 4px 8px;
 }
 
-/* Tabs */
+/* (Legacy) Tabs â€” not used anymore by the JSX, safe to keep */
 .tabs-list{
   background:#fff;
   border:1px solid var(--brand-line);
@@ -192,18 +192,28 @@ h1{ font-weight:600; } h2{ font-weight:600; }
 .rounded-lg{ border-radius: var(--radius-lg); }
 .hover\:shadow-brand-md:hover{ box-shadow: var(--shadow-md); }
 
-/* --- Tabs: rock-solid look & sizing --- */
+/* -------------------------------------------------- */
+/* Utilities to support custom widths used in JSX     */
+/* -------------------------------------------------- */
+.w-38 { width: 9.5rem; }
+@media (min-width: 768px) {
+  .md\:w-42 { width: 10.5rem; }
+}
+
+/* -------------------------------------------------- */
+/* Tabs (final): thinner + lighter cream, no wonkiness */
+/* -------------------------------------------------- */
 .ccg-tabs{
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  height: 44px; /* matches the card vibe */
+  height: 36px;                 /* thinner */
   align-items: center;
   gap: 6px;
-  padding: 6px;
-  background: #FAF4EE;           /* soft cream track */
-  border: 1px solid #E7DCCF;     /* subtle line */
-  border-radius: 12px;           /* match card-ish radius */
-  overflow: hidden;              /* keep pills inside */
+  padding: 4px;
+  background: #FCF7F1;          /* lighter beige */
+  border: 1px solid #E9DFD3;    /* lighter border */
+  border-radius: 10px;          /* subtle rounding to match cards better */
+  overflow: hidden;             /* keep pills inside */
 }
 
 .ccg-tab{
@@ -211,19 +221,23 @@ h1{ font-weight:600; } h2{ font-weight:600; }
   align-items: center;
   justify-content: center;
   height: 100%;
-  border-radius: 10px;           /* slightly less than track */
+  border-radius: 8px;           /* slightly less than track */
   font-size: 14px;
   font-weight: 600;
   color: #8A7A6A;
-  border: 1px solid transparent; /* prevents layout shift */
+  border: 1px solid transparent;/* reserve space (no jump on active) */
   transition: color .15s ease, background .15s ease, border-color .15s ease;
+  user-select: none;
 }
 .ccg-tab:hover{ color: #2F2A24; }
 
 .ccg-tab[data-state="active"]{
   background: #FFFFFF;
   color: #2F2A24;
-  border-color: #E7DCCF;         /* inner border; stays inside the track */
-  box-shadow: 0 1px 2px rgba(0,0,0,0.06); /* tiny depth */
+  border-color: #E9DFD3;        /* inner border; stays inside the track */
+  box-shadow: 0 1px 1px rgba(0,0,0,0.04);
 }
 
+/* Optional: a hair taller on md+ screens */
+@media (min-width: 768px){
+  .ccg-tabs{ height: 38px; padding: 5px; }
