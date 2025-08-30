@@ -626,7 +626,7 @@ ${finding.suggested_action}
       {/* Controls */}
       <div className="flex items-center gap-2">
         <Select value={dateRange} onValueChange={setDateRange}>
-          <SelectTrigger className="w-36 md:w-40 btn-brand-outline rounded-2xl flex items-center justify-start">
+          <SelectTrigger className="w-38 md:w-42 btn-brand-outline rounded-2xl flex items-center justify-start">
             <Calendar className="h-4 w-4 mr-2" />
             <SelectValue placeholder="Last 30 days" />
           </SelectTrigger>
