@@ -754,14 +754,14 @@ ${finding.suggested_action}
 
         {/* Tabs */}
         <Tabs defaultValue="findings" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 rounded-[18px] bg-[#FAF4EE] border border-[#E7DCCF] px-1 py-1 shadow-[inset_0_1px_0_#FFFFFF,inset_0_-1px_0_#EDE4D8]">
-            <TabsTrigger value="findings" className="rounded-[14px] text-[18px] font-semibold py-2.5 px-6 text-[#8A7A6A] hover:text-[#2F2A24] transition-colors data-[state=active]:bg-white data-[state=active]:text-[#2F2A24] data-[state=active]:border data-[state=active]:border-[#E7DCCF] data-[state=active]:shadow-[0_1px_2px_rgba(0,0,0,0.06)]">
+          <TabsList className="ccg-tabs">
+            <TabsTrigger value="findings" className="ccg-tab">
               Findings
             </TabsTrigger>
-            <TabsTrigger value="products" className="rounded-[14px] text-[18px] font-semibold py-2.5 px-6 text-[#8A7A6A] hover:text-[#2F2A24] transition-colors data-[state=active]:bg-white data-[state=active]:text-[#2F2A24] data-[state=active]:border data-[state=active]:border-[#E7DCCF] data-[state=active]:shadow-[0_1px_2px_rgba(0,0,0,0.06)]">
+            <TabsTrigger value="products" className="ccg-tab">
               Products
             </TabsTrigger>
-            <TabsTrigger value="overview" className="rounded-[14px] text-[18px] font-semibold py-2.5 px-6 text-[#8A7A6A] hover:text-[#2F2A24] transition-colors data-[state=active]:bg-white data-[state=active]:text-[#2F2A24] data-[state=active]:border data-[state=active]:border-[#E7DCCF] data-[state=active]:shadow-[0_1px_2px_rgba(0,0,0,0.06)]">
+            <TabsTrigger value="overview" className="ccg-tab">
               Overview
             </TabsTrigger>
           </TabsList>
