@@ -98,6 +98,50 @@ const getSeverityIcon = (severity) => {
   if (s === "low") return <CheckCircle className="h-4 w-4 text-brand-success" />;
   return <AlertTriangle className="h-4 w-4" />;
 };
+/* Choose the most relevant command to display for a finding */
+const pickBestCommand = (f) => {
+  const cmds = Array.isArray(f?.commands) ? f.commands : [];
+  if (!cmds.length) return null;
+  const lcTitle = String(f?.title || "").toLowerCase();
+  const lcType  = String(f?.type  || "").toLowerCase();
+  const serviceHints = [
+    { hint: ["ec2","instance","underutilized","autoscaling"], match: /aws\s+ec2|autoscaling/i },
+    { hint: ["ebs","volume","unattached"],                     match: /aws\s+ec2.*(describe-volumes|delete-volume)/i },
+    { hint: ["eip","elastic ip"],                              match: /aws\s+ec2.*(describe-addresses|release-address)/i },
+    { hint: ["rds","db"],                                      match: /aws\s+rds/i },
+    { hint: ["s3","bucket"],                                   match: /aws\s+s3|s3api/i },
+    { hint: ["lambda"],                                        match: /aws\s+(logs|lambda)/i },
+    { hint: ["elb","load balancer"],                           match: /aws\s+elbv2/i },
+    { hint: ["cloudwatch","anomaly","ce"],                     match: /aws\s+ce\s+get-cost-and-usage/i },
+    { hint: ["nat"],                                           match: /aws\s+ec2.*nat/i },
+  ];
+  for (const s of serviceHints) {
+    if (s.hint.some(h => lcTitle.includes(h) || lcType.includes(h))) {
+      const found = cmds.find(c => s.match.test(c));
+      if (found) return found;
+    }
+  }
+  const ce = cmds.find(c => /aws\s+ce\s+get-cost-and-usage/i.test(c));
+  if (ce) return ce;
+  return cmds[0];
+};
+
+
+/* -------- Findings sort/pick -------- */
+const SEVERITY_ORDER = { critical: 0, high: 1, medium: 2, low: 3 };
+const sortAndPickFindings = (arr, limit = 9) => {
+  const safe = Array.isArray(arr) ? arr : [];
+  return [...safe]
+    .sort((a, b) => {
+      const sa = SEVERITY_ORDER[String(a.severity || "").toLowerCase()] ?? 99;
+      const sb = SEVERITY_ORDER[String(b.severity || "").toLowerCase()] ?? 99;
+      if (sa !== sb) return sa - sb;
+      const va = toNumber(a.monthly_savings_usd_est);
+      const vb = toNumber(b.monthly_savings_usd_est);
+      return vb - va;
+    })
+    .slice(0, limit);
+};
 
 /* -------- Presentational components -------- */
 const KPICard = ({ title, value, change, icon: Icon, subtitle, dataFreshness }) => (
@@ -210,7 +254,7 @@ const TopMoversCard = ({ movers, windowLabel = "7d" }) => (
       ) : (
         <div className="space-y-3">
           {movers.slice(0, 6).map((m, i) => (
-            <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-brand-bg/30 border border-brand-line">
+            <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-brand-bg/30">
               <div className="flex items-center gap-3">
                 {/* Green is good (down); Red is up */}
                 <div className={`w-2 h-8 rounded ${toNumber(m.change_amount) >= 0 ? "bg-red-500" : "bg-green-500"}`} />
@@ -279,47 +323,6 @@ const KeyInsightsCard = ({ insights }) => {
   );
 };
 
-/* ---- Evidence Block (inline style to match screenshot) ---- */
-const EvidenceBlock = ({ evidence }) => {
-  if (!evidence || typeof evidence !== "object") return null;
-
-  const rows = [];
-  const push = (label, val) => {
-    if (val === undefined || val === null || val === "") return;
-    rows.push([label, String(val)]);
-  };
-
-  // Preferred order
-  push("Resource", evidence.resource_id);
-  push("Region", evidence.region);
-  push("Type", evidence.instance_type || evidence.db_instance_class || evidence.type);
-  push("Size", evidence.size_gb != null ? `${evidence.size_gb} GB` : undefined);
-  push("Allocation ID", evidence.allocation_id);
-  push("LB Name", evidence.lb_name);
-
-  // Additional leftover fields
-  const used = new Set(rows.map(([k]) => k.toLowerCase()));
-  Object.entries(evidence).forEach(([k, v]) => {
-    const label = k.replace(/_/g, " ").replace(/\b\w/g, m => m.toUpperCase());
-    if (!used.has(label.toLowerCase()) && v !== undefined && v !== null && v !== "") {
-      rows.push([label, String(v)]);
-    }
-  });
-
-  if (rows.length === 0) return null;
-
-  return (
-    <div className="evidence-panel inline-evidence">
-      {rows.map(([label, value], i) => (
-        <div key={i} className="ev-row">
-          <span className="ev-label">{label}:</span>{" "}
-          <span className="ev-code">{value}</span>
-        </div>
-      ))}
-    </div>
-  );
-};
-
 const FindingCard = ({ finding, onViewDetails }) => (
   <Card className="finding-card">
     <CardHeader className="pb-3">
@@ -344,15 +347,16 @@ const FindingCard = ({ finding, onViewDetails }) => (
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-sm text-brand-muted">Monthly Savings</span>
-          {toNumber(finding.monthly_savings_usd_est) > 0 ? (
-            <span className="text-lg font-semibold text-brand-success">{formatCurrency(finding.monthly_savings_usd_est)}</span>
-          ) : (
-            <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-600 border border-gray-200">Investigation</span>
-          )}
+          <span className="text-lg font-semibold text-brand-success">{formatCurrency(finding.monthly_savings_usd_est)}</span>
         </div>
 
-        {/* Evidence */}
-        <EvidenceBlock evidence={finding.evidence} />
+        {finding.evidence && (finding.evidence.resource_id || finding.evidence.region || finding.evidence.instance_type) && (
+          <div className="text-xs bg-brand-bg/30 p-2 rounded border border-brand-line">
+            {finding.evidence.resource_id && <div className="font-mono text-brand-muted">Resource: {finding.evidence.resource_id}</div>}
+            {finding.evidence.region && <div className="text-brand-muted">Region: {finding.evidence.region}</div>}
+            {finding.evidence.instance_type && <div className="text-brand-muted">Type: {finding.evidence.instance_type}</div>}
+          </div>
+        )}
 
         <div className="flex justify-between text-xs">
           <span className="text-brand-muted">Risk: <span className={getRiskColor(finding.risk_level)}>{finding.risk_level}</span></span>
@@ -362,9 +366,7 @@ const FindingCard = ({ finding, onViewDetails }) => (
         {finding.suggested_action && <p className="text-sm text-brand-ink">{finding.suggested_action}</p>}
 
         {finding.commands && finding.commands.length > 0 && (
-          <div className="bg-brand-bg p-3 rounded-lg border border-brand-line">
-            <code className="text-xs font-mono text-brand-ink">{finding.commands[0]}</code>
-          </div>
+          <div className="p-3 rounded-lg border border-[#E7DCCF] bg-[#F7F1EA]"><code className="text-xs font-mono text-brand-ink">{pickBestCommand(finding)}</code></div>
         )}
 
         <div className="flex items-center justify-between text-xs text-brand-muted">
@@ -427,9 +429,6 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dateRange, setDateRange] = useState("30d");
-
-  const [derivedSavings, setDerivedSavings] = useState(0);
-  const [showInvestigations, setShowInvestigations] = useState(false);
 
   useEffect(() => {
     loadAllData();
@@ -499,9 +498,7 @@ const Dashboard = () => {
       const kpis = sum.kpis || {};
       const products = Array.isArray(sum.top_products) ? sum.top_products : [];
       setSummary(sum);
-      const fArr = Array.isArray(fndRes.data) ? fndRes.data : [];
-      setFindings(fArr);
-      setDerivedSavings(fArr.reduce((acc, f) => acc + (toNumber(f.monthly_savings_usd_est) > 0 ? toNumber(f.monthly_savings_usd_est) : 0), 0));
+      setFindings(Array.isArray(fndRes.data) ? fndRes.data : []);
 
       const moversNorm = normalizeMovers(mvRes.data, products);
       setTopMovers(moversNorm);
@@ -610,7 +607,7 @@ ${finding.suggested_action}
       const arr = Array.isArray(data) ? data : [];
       const headers = ["Title", "Type", "Severity", "Monthly Savings", "Resource ID", "Action"];
       const rows = arr.map((f) => [
-        f.title, f.type, f.severity, f.monthly_savings_usd_est, (f.evidence && (f.evidence.resource_id || "")) || f.resource_id || "", f.suggested_action
+        f.title, f.type, f.severity, f.monthly_savings_usd_est, f.resource_id || "", f.suggested_action
       ]);
       const csv = [headers, ...rows].map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
       const blob = new Blob([csv], { type: "text/csv" });
@@ -654,16 +651,7 @@ ${finding.suggested_action}
     dateRange === "7d"  ? "Cost trends over the last 7 days"  :
                           "Cost trends over the last 90 days";
 
-  // Prepare findings: filter & sort
-  const severityRank = { critical: 0, high: 1, medium: 2, low: 3 };
-  const displayedFindings = (showInvestigations ? findings : findings.filter(f => toNumber(f.monthly_savings_usd_est) > 0))
-    .slice()
-    .sort((a, b) => {
-      const ra = severityRank[String(a.severity || "").toLowerCase()] ?? 99;
-      const rb = severityRank[String(b.severity || "").toLowerCase()] ?? 99;
-      if (ra !== rb) return ra - rb;
-      return toNumber(b.monthly_savings_usd_est) - toNumber(a.monthly_savings_usd_est);
-    });
+  const displayFindings = sortAndPickFindings(findings, 9);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand-bg to-brand-light">
@@ -683,7 +671,7 @@ ${finding.suggested_action}
               <Select value={dateRange} onValueChange={setDateRange}>
                 <SelectTrigger className="w-38 md:w-42 btn-brand-outline rounded-2xl flex items-center justify-start px-4">
                   <Calendar className="h-4 w-4 mr-2" />
-                  <SelectValue />
+                  <SelectValue placeholder="Last 30 days" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="7d">Last 7 days</SelectItem>
@@ -691,11 +679,13 @@ ${finding.suggested_action}
                   <SelectItem value="90d">Last 90 days</SelectItem>
                 </SelectContent>
               </Select>
+
               <Button variant="outline" onClick={exportCSV} className="btn-brand-outline rounded-2xl">
                 <Download className="h-4 w-4 mr-2" />
                 Export CSV
               </Button>
-              <Button onClick={loadAllData} className="btn-brand-primary">
+
+              <Button onClick={loadAllData} className="btn-brand-primary rounded-2xl">
                 <Activity className="h-4 w-4 mr-2" />
                 Refresh
               </Button>
@@ -729,7 +719,7 @@ ${finding.suggested_action}
           />
           <KPICard
             title="Savings Ready"
-            value={formatCurrency(derivedSavings || kpis.savings_ready_usd)}
+            value={formatCurrency(kpis.savings_ready_usd)}
             icon={TrendingDown}
             subtitle="potential monthly savings"
             dataFreshness={kpis.data_freshness_hours}
@@ -765,33 +755,29 @@ ${finding.suggested_action}
         {/* Tabs */}
         <Tabs defaultValue="findings" className="space-y-6">
           <TabsList className="ccg-tabs">
-            <TabsTrigger value="findings" className="ccg-tab">Findings</TabsTrigger>
-            <TabsTrigger value="products" className="ccg-tab">Products</TabsTrigger>
-            <TabsTrigger value="overview" className="ccg-tab">Overview</TabsTrigger>
+            <TabsTrigger value="findings" className="ccg-tab">
+              Findings
+            </TabsTrigger>
+            <TabsTrigger value="products" className="ccg-tab">
+              Products
+            </TabsTrigger>
+            <TabsTrigger value="overview" className="ccg-tab">
+              Overview
+            </TabsTrigger>
           </TabsList>
 
           {/* Findings */}
           <TabsContent value="findings" className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="font-serif text-[18px] md:text-[20px] leading-tight font-semibold text-brand-ink tracking-tight">
+              <h2 className="font-brand-serif text-[18px] md:text-[20px] leading-tight font-semibold text-brand-ink tracking-tight">
                 Cost Optimization Findings
               </h2>
-              <div className="flex items-center gap-2">
-                <Badge className="badge-brand text-brand-success border-brand-success/20">
-                  {formatCurrency(derivedSavings || kpis.savings_ready_usd)}/month potential
-                </Badge>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="btn-brand-outline"
-                  onClick={() => setShowInvestigations(s => !s)}
-                >
-                  {showInvestigations ? "Hide Investigations" : "Show Investigations"}
-                </Button>
-              </div>
+              <Badge className="badge-brand text-brand-success border-brand-success/20">
+                {formatCurrency(kpis.savings_ready_usd)}/month potential
+              </Badge>
             </div>
 
-            {displayedFindings.length === 0 ? (
+            {displayFindings.length === 0 ? (
               <Card className="kpi-card">
                 <CardContent className="text-center py-12">
                   <CheckCircle className="h-12 w-12 text-brand-success mx-auto mb-4" />
@@ -801,8 +787,8 @@ ${finding.suggested_action}
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {displayedFindings.map((f, idx) => (
-                  <FindingCard key={(f.finding_id || `${f.title}-${idx}`)} finding={f} onViewDetails={handleViewDetails} />
+                {displayFindings.map((f) => (
+                  <FindingCard key={f.finding_id || `${f.title}-${f.resource_id || ""}`} finding={f} onViewDetails={handleViewDetails} />
                 ))}
               </div>
             )}
