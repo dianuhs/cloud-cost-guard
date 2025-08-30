@@ -625,20 +625,20 @@ ${finding.suggested_action}
 
             <div className="flex items-center gap-2">
               <Select value={dateRange} onValueChange={setDateRange}>
-                <SelectTrigger className="w-36">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="7d">Last 7 days</SelectItem>
-                  <SelectItem value="30d">Last 30 days</SelectItem>
-                  <SelectItem value="90d">Last 90 days</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button variant="outline" onClick={exportCSV} className="btn-brand-outline">
-                <Download className="h-4 w-4 mr-2" />
-                Export CSV
-              </Button>
+  <SelectTrigger
+    className="w-44 md:w-48 btn-brand-outline rounded-2xl flex items-center justify-start"
+  >
+    <Calendar className="h-4 w-4 mr-2" />
+    <SelectValue />
+  </SelectTrigger>
+  ...
+</Select>
+
+<Button variant="outline" onClick={exportCSV} className="btn-brand-outline rounded-2xl">
+  <Download className="h-4 w-4 mr-2" />
+  Export CSV
+</Button>
+
               <Button onClick={loadAllData} className="btn-brand-primary">
                 <Activity className="h-4 w-4 mr-2" />
                 Refresh
