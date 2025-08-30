@@ -234,7 +234,14 @@ h1{ font-weight:600; } h2{ font-weight:600; }
   border: 1px solid var(--brand-line) !important;
   border-radius: var(--radius-md) !important;
   padding: 0.75rem !important;
-  font-size: 0.8rem !important;
+  font-size: 0.75rem !important;
 }
 .finding-card .evidence-box div { margin-bottom: 2px !important; }
 .finding-card .evidence-box .font-mono { font-weight: 500 !important; }
+
+/* Uniform severity icons */
+.severity-icon { width: 16px; height: 16px; vertical-align: middle; }
+.severity-icon--critical { color: var(--brand-error); }
+.severity-icon--high { color: var(--brand-accent-2); }    /* warm amber-brown */
+.severity-icon--medium { color: var(--brand-accent); }    /* olive accent */
+.severity-icon--low { color: var(--brand-success); }      /* green */
