@@ -1,16 +1,13 @@
 # Cloud Cost Guard
 
-> A clean cloud cost observability dashboard that highlights daily spend trends, cost by service, **top movers**, and **prioritized savings opportunities** with evidence and methodology.
+> A cloud cost observability dashboard that highlights daily spend trends, cost by service, top movers, and prioritized savings opportunities with evidence and methodology.
 
 [**Live Demo →**](https://guard.cloudandcapital.com) • [**Code (GitHub)**](https://github.com/dianuhs/cloud-cost-guard)
 
 ---
 
-- Focuses on **actionable savings**
-- Clear **findings cards** with **evidence** (resource, region, type)
-- **Daily spend trend** + **service breakdown** + **top movers** to explain changes
-- Simple **CSV export** of findings with savings
-- Professional, consistent UI with a Cloud & Capital theme
+- Clear findings cards with evidence (resource, region, type)
+- Simple CSV export of findings with savings
 
 ## Screenshots
 
@@ -58,11 +55,11 @@ Or, you can parameterize an API base via env (see **.env.example**).
 ## Tech
 - React (CRA + craco), Recharts, shadcn/ui, lucide-react
 - Vercel for hosting
-- Tight, consistent styling in `App.css` (brand tokens + utilities)
+- Styling in `App.css` (brand tokens + utilities)
 
 ---
 
-## Project structure (high-level)
+## Project structure
 
 ```
 src/
@@ -72,14 +69,6 @@ src/
   components/ui/...
 public/
 ```
-
----
-
-## Accessibility & UX
-- Alt text on images (brand logo)
-- Color contrast tuned for body text & emphasis
-- Icons normalized across severities to avoid visual jitter
-- Evidence panels use smaller mono text for legibility without clutter
 
 ---
 
