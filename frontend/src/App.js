@@ -28,7 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import {
   DollarSign, TrendingUp, TrendingDown, AlertTriangle, Server, HardDrive,
   Eye, Download, BarChart3, Activity, Target, PieChart as PieChartIcon,
-  TrendingUp as TrendingUpIcon, Calendar, CheckCircle, XCircle, ArrowUpDown
+  TrendingUp as TrendingUpIcon, Calendar, CheckCircle, XCircle
 } from "lucide-react";
 
 /** IMPORTANT: same-origin proxy */
@@ -90,7 +90,6 @@ const getSeverityColor = (severity) => ({
   low: "severity-low",
 }[String(severity || "").toLowerCase()] || "severity-medium");
 
-// Uniform severity icons (size + colors)
 const getSeverityIcon = (severity) => {
   const s = String(severity || "").toLowerCase();
   const common = "severity-icon";
@@ -172,6 +171,7 @@ const isOrphaned = (f) => {
     title.includes("orphan")
   );
 };
+
 
 /* -------- Presentational components -------- */
 const KPICard = ({ title, value, change, icon: Icon, subtitle, dataFreshness }) => (
@@ -412,78 +412,41 @@ const FindingCard = ({ finding, onViewDetails }) => (
   </Card>
 );
 
-const ProductTable = ({ products, sort, onSort, query, limit }) => {
-  const norm = Array.isArray(products) ? products.map((p) => ({
-    name: p.product || p.name || p.service || "—",
-    amount: toNumber(p.amount_usd || p.amount || 0),
-    wow: toNumber(p.wow_delta || p.wow_usd || 0),
-    pct: toNumber(p.percent_of_total || 0),
-  })) : [];
-
-  const filtered = norm.filter(p => !query || p.name.toLowerCase().includes(String(query).toLowerCase()));
-
-  const sorted = [...filtered].sort((a, b) => {
-    const dir = sort?.dir === "asc" ? 1 : -1;
-    const key = sort?.key || "amount";
-    if (key === "name") return a.name.localeCompare(b.name) * dir;
-    if (key === "amount") return (a.amount - b.amount) * dir;
-    if (key === "wow") return (a.wow - b.wow) * dir;
-    if (key === "pct") return (a.pct - b.pct) * dir;
-    return (a.amount - b.amount) * dir;
-  });
-
-  const limited = (limit && limit !== "all") ? sorted.slice(0, Number(limit)) : sorted;
-
-  const th = (label, key) => (
-    <button
-      className="th-sort"
-      onClick={() => onSort(key)}
-      title={`Sort by ${label}`}
-      type="button"
-    >
-      <span>{label}</span>
-      <ArrowUpDown className={`sort-icon ${sort?.key === key ? "active" : ""}`} />
-    </button>
-  );
-
-  return (
-    <div className="table-brand rounded-lg">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="text-brand-muted font-semibold">{th("Product", "name")}</TableHead>
-            <TableHead className="text-right text-brand-muted font-semibold">{th("30d Cost", "amount")}</TableHead>
-            <TableHead className="text-right text-brand-muted font-semibold">{th("WoW Change", "wow")}</TableHead>
-            <TableHead className="text-right text-brand-muted font-semibold">{th("% of Total", "pct")}</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {limited.map((p, i) => {
-            const wowAbs = Math.abs(p.wow);
-            return (
-              <TableRow key={i} className="hover:bg-brand-bg/30">
-                <TableCell className="font-medium text-brand-ink">{p.name}</TableCell>
-                <TableCell className="text-right text-brand-ink">{formatCurrency(p.amount)}</TableCell>
-                <TableCell className="text-right">
-                  <div className={`flex items-center justify-end gap-1 ${p.wow >= 0 ? "text-brand-error" : "text-brand-success"}`}>
-                    {p.wow >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                    {formatCurrency(wowAbs)}
-                  </div>
-                </TableCell>
-                <TableCell className="text-right text-brand-ink">
-                  <div className="inline-flex flex-col items-end gap-1">
-                    <span>{p.pct.toFixed(1)}%</span>
-                    <div className="pct-bar-track"><div className="pct-bar" style={{ width: `${Math.min(100, Math.max(0, p.pct))}%` }} /></div>
-                  </div>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </div>
-  );
-};
+const ProductTable = ({ products }) => (
+  <div className="table-brand rounded-lg">
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="text-brand-muted font-semibold">Product</TableHead>
+          <TableHead className="text-right text-brand-muted font-semibold">30d Cost</TableHead>
+          <TableHead className="text-right text-brand-muted font-semibold">WoW Change</TableHead>
+          <TableHead className="text-right text-brand-muted font-semibold">% of Total</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {products.map((p, i) => {
+          const wow = toNumber(p.wow_delta || p.wow_usd || 0);
+          const label = p.product || p.name || p.service || "—";
+          const amount = toNumber(p.amount_usd || p.amount || 0);
+          const pct = toNumber(p.percent_of_total || 0);
+          return (
+            <TableRow key={i} className="hover:bg-brand-bg/30">
+              <TableCell className="font-medium text-brand-ink">{label}</TableCell>
+              <TableCell className="text-right text-brand-ink">{formatCurrency(amount)}</TableCell>
+              <TableCell className="text-right">
+                <div className={`flex items-center justify-end gap-1 ${wow >= 0 ? "text-brand-error" : "text-brand-success"}`}>
+                  {wow >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                  {formatCurrency(Math.abs(wow))}
+                </div>
+              </TableCell>
+              <TableCell className="text-right text-brand-ink">{pct.toFixed(1)}%</TableCell>
+            </TableRow>
+          );
+        })}
+      </TableBody>
+    </Table>
+  </div>
+);
 
 /* -------- Main -------- */
 const Dashboard = () => {
@@ -496,10 +459,6 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dateRange, setDateRange] = useState("30d");
-  // Products tab controls
-  const [prodQuery, setProdQuery] = useState("");
-  const [prodSort, setProdSort] = useState({ key: "amount", dir: "desc" }); // name | amount | wow | pct
-  const [prodLimit, setProdLimit] = useState(10); // 10 | 25 | 50 | "all"
 
   useEffect(() => {
     loadAllData();
@@ -696,35 +655,6 @@ ${finding.suggested_action}
     }
   };
 
-  const exportProductsCSV = async () => {
-    try {
-      const sumLoc = summary || {};
-      const products = Array.isArray(sumLoc.top_products) ? sumLoc.top_products : [];
-      const rows = products.map(p => ({
-        Product: p.product || p.name || p.service || "—",
-        Cost_30d_USD: toNumber(p.amount_usd || p.amount || 0),
-        WoW_Change_USD: toNumber(p.wow_delta || p.wow_usd || 0),
-        Percent_of_Total: toNumber(p.percent_of_total || 0)
-      }));
-      const headers = Object.keys(rows[0] || { Product: "", Cost_30d_USD: 0, WoW_Change_USD: 0, Percent_of_Total: 0 });
-      const csvLines = [
-        headers.join(","),
-        ...rows.map(r => headers.map(h => `"${String(r[h]).replace(/"/g, '""')}"`).join(","))
-      ];
-      const csv = csvLines.join("\\n");
-      const blob = new Blob([csv], { type: "text/csv" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "products.csv";
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error("Export products failed:", err);
-      alert("Export products failed. Please try again.");
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-brand-bg to-brand-light flex items-center justify-center">
@@ -753,7 +683,7 @@ ${finding.suggested_action}
     dateRange === "7d"  ? "Cost trends over the last 7 days"  :
                           "Cost trends over the last 90 days";
 
-  // --- Filter to savings-impact findings and recompute metrics so UI matches ---
+  // --- New: filter out non-saving findings and recompute Savings Ready to match cards ---
   const positiveFindings = (Array.isArray(findings) ? findings : []).filter(f => toNumber(f.monthly_savings_usd_est) > 0);
   const displayFindings = sortAndPickFindings(positiveFindings, 9);
   const savingsReady = positiveFindings.reduce((acc, f) => acc + toNumber(f.monthly_savings_usd_est), 0);
@@ -903,34 +833,9 @@ ${finding.suggested_action}
 
           {/* Products */}
           <TabsContent value="products" className="space-y-6">
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-semibold text-brand-ink">Product Cost Breakdown</h2>
-                <Badge className="badge-brand">Last {dateRange === "7d" ? "7" : dateRange === "30d" ? "30" : "90"} days</Badge>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  className="input-brand"
-                  placeholder="Search products…"
-                  value={prodQuery}
-                  onChange={(e) => setProdQuery(e.target.value)}
-                />
-                <Select value={String(prodLimit)} onValueChange={(v) => setProdLimit(v === "all" ? "all" : Number(v))}>
-                  <SelectTrigger className="w-38 md:w-42 btn-brand-outline rounded-2xl flex items-center justify-start px-4">
-                    <SelectValue placeholder="Rows" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="10">Top 10</SelectItem>
-                    <SelectItem value="25">Top 25</SelectItem>
-                    <SelectItem value="50">Top 50</SelectItem>
-                    <SelectItem value="all">All</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button variant="outline" onClick={exportProductsCSV} className="btn-brand-outline rounded-2xl">
-                  <Download className="h-4 w-4 mr-2" />
-                  Export CSV
-                </Button>
-              </div>
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-brand-ink">Product Cost Breakdown</h2>
+              <Badge className="badge-brand">Last {dateRange === "7d" ? "7" : dateRange === "30d" ? "30" : "90"} days</Badge>
             </div>
 
             <Card className="kpi-card">
@@ -939,13 +844,7 @@ ${finding.suggested_action}
                 <CardDescription className="text-brand-muted">Your highest spending products and week-over-week changes</CardDescription>
               </CardHeader>
               <CardContent>
-                <ProductTable
-                  products={Array.isArray(top_products) ? top_products : []}
-                  sort={prodSort}
-                  onSort={(key) => setProdSort(s => ({ key, dir: s.key === key && s.dir === "desc" ? "asc" : s.key === key && s.dir === "asc" ? "desc" : "desc" }))}
-                  query={prodQuery}
-                  limit={prodLimit}
-                />
+                <ProductTable products={Array.isArray(top_products) ? top_products : []} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -961,8 +860,8 @@ ${finding.suggested_action}
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {[
-                    { type: "Under-utilized", count: uiUnderutilized, color: "bg-blue-500" },
-                    { type: "Orphaned", count: uiOrphans, color: "bg-yellow-500" },
+                    { type: "Under-utilized", count: kpis.underutilized_count, color: "bg-blue-500" },
+                    { type: "Orphaned", count: kpis.orphans_count, color: "bg-yellow-500" },
                     { type: "Idle", count: Array.isArray(findings) ? findings.filter(f => String(f.title).toLowerCase().includes("idle")).length : 0, color: "bg-red-500" }
                   ].map((it, i) => (
                     <div key={i} className="flex items-center justify-between">
