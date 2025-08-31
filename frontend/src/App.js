@@ -90,6 +90,7 @@ const getSeverityColor = (severity) => ({
   low: "severity-low",
 }[String(severity || "").toLowerCase()] || "severity-medium");
 
+// Uniform severity icons (force size/color everywhere)
 const getSeverityIcon = (severity) => {
   const s = String(severity || "").toLowerCase();
   const common = "severity-icon";
@@ -130,7 +131,6 @@ const pickBestCommand = (f) => {
 
 
 /* -------- Findings sort/pick -------- */
-/* Sort by highest savings first (most actionable), then severity */
 const SEVERITY_ORDER = { critical: 0, high: 1, medium: 2, low: 3 };
 const sortAndPickFindings = (arr, limit = 9) => {
   const safe = Array.isArray(arr) ? arr : [];
@@ -138,10 +138,10 @@ const sortAndPickFindings = (arr, limit = 9) => {
     .sort((a, b) => {
       const va = toNumber(a.monthly_savings_usd_est);
       const vb = toNumber(b.monthly_savings_usd_est);
-      if (vb !== va) return vb - va; // savings desc
+      if (vb !== va) return vb - va;
       const sa = SEVERITY_ORDER[String(a.severity || "").toLowerCase()] ?? 99;
       const sb = SEVERITY_ORDER[String(b.severity || "").toLowerCase()] ?? 99;
-      return sa - sb; // severity as tiebreaker
+      return sa - sb;
     })
     .slice(0, limit);
 };
@@ -171,7 +171,6 @@ const isOrphaned = (f) => {
     title.includes("orphan")
   );
 };
-
 
 /* -------- Presentational components -------- */
 const KPICard = ({ title, value, change, icon: Icon, subtitle, dataFreshness }) => (
@@ -466,7 +465,6 @@ const Dashboard = () => {
   }, [dateRange]);
 
   const normalizeMovers = (raw, productsForFallback = []) => {
-    // Accept arrays or objects with known keys
     let arr = raw;
     if (arr && !Array.isArray(arr)) {
       if (Array.isArray(arr.data)) arr = arr.data;
@@ -488,7 +486,6 @@ const Dashboard = () => {
 
     if (out.length > 0) return out;
 
-    // Fallback: synthesize movers from top_products using wow_delta
     if (productsForFallback && productsForFallback.length) {
       const synth = productsForFallback
         .filter((p) => Number.isFinite(toNumber(p.wow_delta)))
@@ -533,7 +530,7 @@ const Dashboard = () => {
       const moversNorm = normalizeMovers(mvRes.data, products);
       setTopMovers(moversNorm);
 
-      // Service Breakdown from summary.top_products
+      // Service Breakdown
       const total = products.reduce((acc, p) => acc + toNumber(p.amount_usd || p.amount || 0), 0);
       const palette = ["#8B6F47","#B5905C","#D8C3A5","#A8A7A7","#E98074","#C0B283","#F4E1D2","#E6B89C"];
       const breakdown = products.slice(0, 8).map((p, i) => {
@@ -547,7 +544,7 @@ const Dashboard = () => {
       });
       setServiceBreakdown({ data: breakdown, total });
 
-      // Daily Spend Trend: prefer backend if present on summary; otherwise synthesize from totals
+      // Daily Spend Trend
       let series = [];
       const daily = Array.isArray(sum.daily_series) ? sum.daily_series : [];
       if (daily.length) {
@@ -568,13 +565,13 @@ const Dashboard = () => {
       }
       setCostTrend(series);
 
-      // Key Insights derived from series + totals
+      // Key Insights
       const highest = series.reduce(
         (m, pt) => (pt.cost > m.amount ? { date: pt.formatted_date, dateISO: pt.dateISO || new Date().toISOString().slice(0,10), amount: pt.cost } : m),
         { date: "-", dateISO: null, amount: 0 }
       );
       const totalWindow = series.reduce((s, pt) => s + pt.cost, 0);
-      const monthBudget = 180000; // fixed as requested
+      const monthBudget = 180000;
       setKeyInsights({
         highest_single_day: highest,
         projected_month_end: totalWindow,
@@ -594,7 +591,7 @@ const Dashboard = () => {
   const handleViewDetails = (finding) => {
     const evidence = JSON.stringify(finding.evidence, null, 2);
     const assumptions = Array.isArray(finding.assumptions) && finding.assumptions.length
-      ? finding.assumptions.join("\\n• ") : "None specified";
+      ? finding.assumptions.join("\n• ") : "None specified";
     const details = `
 FINDING DETAILS
 ==============
@@ -622,7 +619,7 @@ ASSUMPTIONS
 
 RECOMMENDED COMMANDS
 ===================
-${Array.isArray(finding.commands) ? finding.commands.join("\\n") : "No specific commands provided"}
+${Array.isArray(finding.commands) ? finding.commands.join("\n") : "No specific commands provided"}
 
 ACTION REQUIRED
 ===============
@@ -635,13 +632,12 @@ ${finding.suggested_action}
     try {
       const { data } = await axios.get(`${API}/findings?sort=savings&limit=1000`);
       const arr = Array.isArray(data) ? data : [];
-      // Only export rows that actually save money
       const rowsToExport = arr.filter((f) => toNumber(f.monthly_savings_usd_est) > 0);
       const headers = ["Title", "Type", "Severity", "Monthly Savings", "Resource ID", "Action"];
       const rows = rowsToExport.map((f) => [
         f.title, f.type, f.severity, f.monthly_savings_usd_est, f.resource_id || "", f.suggested_action
       ]);
-      const csv = [headers, ...rows].map(r => r.map(v => `\"${String(v ?? "").replace(/\"/g, '\"\"')}\"`).join(",")).join("\\n");
+      const csv = [headers, ...rows].map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
       const blob = new Blob([csv], { type: "text/csv" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -683,12 +679,25 @@ ${finding.suggested_action}
     dateRange === "7d"  ? "Cost trends over the last 7 days"  :
                           "Cost trends over the last 90 days";
 
-  // --- New: filter out non-saving findings and recompute Savings Ready to match cards ---
+  // Filter to savings-impact findings and recompute UI-facing metrics
   const positiveFindings = (Array.isArray(findings) ? findings : []).filter(f => toNumber(f.monthly_savings_usd_est) > 0);
   const displayFindings = sortAndPickFindings(positiveFindings, 9);
   const savingsReady = positiveFindings.reduce((acc, f) => acc + toNumber(f.monthly_savings_usd_est), 0);
   const uiUnderutilized = positiveFindings.filter(isUnderUtil).length;
   const uiOrphans = positiveFindings.filter(isOrphaned).length;
+
+  // Opportunities summary (for the new card under Products)
+  const productOpportunitySpec = [
+    { key: "under", label: "Under-utilized compute", match: isUnderUtil },
+    { key: "orphan", label: "Orphaned resources", match: isOrphaned },
+    { key: "idle", label: "Idle resources", match: (f) => String(f.title || f.type || "").toLowerCase().includes("idle") },
+  ];
+  const productOpportunityRows = productOpportunitySpec.map((row) => {
+    const list = positiveFindings.filter(row.match);
+    const count = list.length;
+    const savings = list.reduce((s, f) => s + toNumber(f.monthly_savings_usd_est), 0);
+    return { ...row, count, savings };
+  }).filter(r => r.count > 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand-bg to-brand-light">
@@ -834,24 +843,48 @@ ${finding.suggested_action}
           {/* Products */}
           <TabsContent value="products" className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-brand-ink">Product Cost Breakdown</h2>
+              <h2 className="font-brand-serif text-[18px] md:text-[20px] leading-tight font-semibold text-brand-ink tracking-tight">Product Cost Breakdown</h2>
               <Badge className="badge-brand">Last {dateRange === "7d" ? "7" : dateRange === "30d" ? "30" : "90"} days</Badge>
             </div>
 
             <Card className="kpi-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-brand-ink"><BarChart3 className="h-5 w-5" />Top Products by Cost</CardTitle>
-                <CardDescription className="text-brand-muted">Your highest spending products and week-over-week changes</CardDescription>
+                <CardDescription className="text-brand-muted">Your highest spending cloud products and their week-over-week changes</CardDescription>
               </CardHeader>
               <CardContent>
                 <ProductTable products={Array.isArray(top_products) ? top_products : []} />
+              </CardContent>
+            </Card>
+
+            {/* New Opportunities card (simple, auto-derived) */}
+            <Card className="kpi-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-brand-ink">Cost Optimization Opportunities</CardTitle>
+                <CardDescription className="text-brand-muted">Grouped by opportunity type</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {productOpportunityRows.length === 0 && (
+                    <div className="text-sm text-brand-muted">No savings-impact opportunities detected.</div>
+                  )}
+                  {productOpportunityRows.map((row, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 bg-brand-bg/50 rounded-lg border border-brand-line">
+                      <div className="text-sm text-brand-ink">{row.label}</div>
+                      <div className="text-right">
+                        <div className="text-sm text-brand-muted">{row.count} items</div>
+                        <div className="font-semibold text-brand-success">{formatCurrency(row.savings)}/mo</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
 
           {/* Overview */}
           <TabsContent value="overview" className="space-y-6">
-            <h2 className="text-xl font-semibold text-brand-ink">Cost Overview</h2>
+            <h2 className="font-brand-serif text-[18px] md:text-[20px] leading-tight font-semibold text-brand-ink tracking-tight">Cost Overview</h2>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card className="kpi-card">
                 <CardHeader>
@@ -860,8 +893,8 @@ ${finding.suggested_action}
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {[
-                    { type: "Under-utilized", count: kpis.underutilized_count, color: "bg-blue-500" },
-                    { type: "Orphaned", count: kpis.orphans_count, color: "bg-yellow-500" },
+                    { type: "Under-utilized", count: uiUnderutilized, color: "bg-blue-500" },
+                    { type: "Orphaned", count: uiOrphans, color: "bg-yellow-500" },
                     { type: "Idle", count: Array.isArray(findings) ? findings.filter(f => String(f.title).toLowerCase().includes("idle")).length : 0, color: "bg-red-500" }
                   ].map((it, i) => (
                     <div key={i} className="flex items-center justify-between">
