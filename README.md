@@ -1,41 +1,94 @@
-# Cloud Cost Guard (by Cloud & Capital)
+# Cloud Cost Guard
 
-Open‑source dashboard that turns cloud bills into clear actions.  
-CLI‑first, CSV‑friendly, and opinionated about what to fix next.
+> A clean cloud cost observability dashboard that highlights daily spend trends, cost by service, **top movers**, and **prioritized savings opportunities** with evidence and methodology.
 
-## What it shows
-- Spend & trends, unit economics
-- Identified vs. realized savings
-- Coverage (RIs/SPs), rightsizing, idle/orphan checks
-- Export: CSV (totals, by service, by tag)
+[**Live Demo →**](https://guard.cloudandcapital.com) • [**Code (GitHub)**](https://github.com/dianuhs/cloud-cost-guard)
 
-## Why it exists
-Faster decisions, lower waste, and unit economics everyone agrees on.
+---
 
-## Quick start
-```bash
-# frontend
-pnpm i && pnpm dev   # or npm/yarn
-
-# backend (if applicable)
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app:app --reload --port 8000
-```
-
-### Config
-- Set API base URL for tests via env:
-  - `CLOUD_COST_GUARD_BASE_URL=http://localhost:8000`
-
-- Provide data via one of:
-  - Drop a Cost Explorer/CUR CSV into `examples/billing-sample.csv`
-  - Or set `BILLING_CSV_PATH` in `.env.local`
-
-## Data disclaimer
-Demo data for portfolio purposes. All numbers illustrative unless connected to your billing export.
+- Focuses on **actionable savings**
+- Clear **findings cards** with **evidence** (resource, region, type)
+- **Daily spend trend** + **service breakdown** + **top movers** to explain changes
+- Simple **CSV export** of findings with savings
+- Professional, consistent UI with a Cloud & Capital theme
 
 ## Screenshots
-_Add 2–3 light‑mode screenshots with purple accent here._
+
+**Dashboard**  
+![Dashboard](docs/screenshots/1-dashboard.png)
+
+**Products**  
+![Products](docs/screenshots/2-products.png)
+
+**Findings**  
+![Findings](docs/screenshots/3-findings.png)
+
+---
+
+## Quickstart
+
+```bash
+# Node 20+ is recommended
+npm install
+
+# Start dev server (CRA)
+npm start
+
+# Production build
+npm run build
+```
+
+### API
+The frontend expects the following endpoints at `/api` (same-origin or via proxy):
+
+- `GET /api/summary?window=7d|30d|90d`
+- `GET /api/findings?sort=savings&limit=50`
+- `GET /api/movers?window=7d`
+
+If you're running a backend on a different port for local dev, add a CRA dev proxy in `package.json`:
+
+```json
+{ "proxy": "http://localhost:5000" }
+```
+
+Or, you can parameterize an API base via env (see **.env.example**).
+
+---
+
+## Tech
+- React (CRA + craco), Recharts, shadcn/ui, lucide-react
+- Vercel for hosting
+- Tight, consistent styling in `App.css` (brand tokens + utilities)
+
+---
+
+## Project structure (high-level)
+
+```
+src/
+  App.js
+  App.css
+  assets/
+  components/ui/...
+public/
+```
+
+---
+
+## Accessibility & UX
+- Alt text on images (brand logo)
+- Color contrast tuned for body text & emphasis
+- Icons normalized across severities to avoid visual jitter
+- Evidence panels use smaller mono text for legibility without clutter
+
+---
+
+## Contributing
+PRs and issues are welcome. For local development, see **Quickstart** above.
+
+---
 
 ## License
-MIT © 2025 Diana Molski, Cloud & Capital
+This project is licensed under the **MIT License**. See [LICENSE](LICENSE) for details.
+
+
