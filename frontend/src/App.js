@@ -686,19 +686,6 @@ ${finding.suggested_action}
   const uiUnderutilized = positiveFindings.filter(isUnderUtil).length;
   const uiOrphans = positiveFindings.filter(isOrphaned).length;
 
-  // Opportunities summary (for the new card under Products)
-  const productOpportunitySpec = [
-    { key: "under", label: "Under-utilized compute", match: isUnderUtil },
-    { key: "orphan", label: "Orphaned resources", match: isOrphaned },
-    { key: "idle", label: "Idle resources", match: (f) => String(f.title || f.type || "").toLowerCase().includes("idle") },
-  ];
-  const productOpportunityRows = productOpportunitySpec.map((row) => {
-    const list = positiveFindings.filter(row.match);
-    const count = list.length;
-    const savings = list.reduce((s, f) => s + toNumber(f.monthly_savings_usd_est), 0);
-    return { ...row, count, savings };
-  }).filter(r => r.count > 0);
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand-bg to-brand-light">
       {/* Header */}
@@ -763,7 +750,7 @@ ${finding.suggested_action}
             subtitle="vs last period"
             dataFreshness={kpis.data_freshness_hours}
           />
-          <KPICard
+        	  <KPICard
             title="Savings Ready"
             value={formatCurrency(savingsReady)}
             icon={TrendingDown}
@@ -854,30 +841,6 @@ ${finding.suggested_action}
               </CardHeader>
               <CardContent>
                 <ProductTable products={Array.isArray(top_products) ? top_products : []} />
-              </CardContent>
-            </Card>
-
-            {/* New Opportunities card (simple, auto-derived) */}
-            <Card className="kpi-card">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-brand-ink">Cost Optimization Opportunities</CardTitle>
-                <CardDescription className="text-brand-muted">Grouped by opportunity type</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {productOpportunityRows.length === 0 && (
-                    <div className="text-sm text-brand-muted">No savings-impact opportunities detected.</div>
-                  )}
-                  {productOpportunityRows.map((row, i) => (
-                    <div key={i} className="flex items-center justify-between p-3 bg-brand-bg/50 rounded-lg border border-brand-line">
-                      <div className="text-sm text-brand-ink">{row.label}</div>
-                      <div className="text-right">
-                        <div className="text-sm text-brand-muted">{row.count} items</div>
-                        <div className="font-semibold text-brand-success">{formatCurrency(row.savings)}/mo</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </CardContent>
             </Card>
           </TabsContent>
