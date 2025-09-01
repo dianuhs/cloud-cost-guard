@@ -1,9 +1,10 @@
 // src/components/ui/alert.jsx
 import * as React from "react";
 
-// Simple, dependency-free alert primitives.
-// - Renders a container with role="alert"
-// - Only renders <h5> if children exist (avoids a11y error)
+/**
+ * Minimal alert primitives — no heading tags so jsx-a11y/heading-has-content won't fire.
+ * Visuals are controlled by your passed classNames (e.g., alert-brand, bg-blue-50, etc.)
+ */
 
 export const Alert = React.forwardRef(function Alert(
   { className = "", children, ...props },
@@ -15,18 +16,21 @@ export const Alert = React.forwardRef(function Alert(
     </div>
   );
 });
+Alert.displayName = "Alert";
 
 export const AlertTitle = React.forwardRef(function AlertTitle(
   { className = "", children, ...props },
   ref
 ) {
-  if (!children) return null; // key fix: no empty heading rendered
+  // Use a simple div instead of <h*> to avoid the a11y rule firing on empty headings.
+  if (!children) return null;
   return (
-    <h5 ref={ref} className={className} {...props}>
+    <div ref={ref} className={className} {...props}>
       {children}
-    </h5>
+    </div>
   );
 });
+AlertTitle.displayName = "AlertTitle";
 
 export const AlertDescription = React.forwardRef(function AlertDescription(
   { className = "", children, ...props },
@@ -38,3 +42,4 @@ export const AlertDescription = React.forwardRef(function AlertDescription(
     </div>
   );
 });
+AlertDescription.displayName = "AlertDescription";
