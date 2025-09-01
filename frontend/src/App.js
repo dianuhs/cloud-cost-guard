@@ -38,7 +38,8 @@ const API = "/api";
 const toNumber = (v) => {
   if (typeof v === "number") return v;
   if (typeof v === "string") {
-    const n = Number(v.replace?.(/[^0-9\.\-]/g, "") ?? v);
+    // eslint fix: no-useless-escape -> use [^0-9.-]
+    const n = Number(v.replace?.(/[^0-9.-]/g, "") ?? v);
     return Number.isFinite(n) ? n : 0;
   }
   return 0;
