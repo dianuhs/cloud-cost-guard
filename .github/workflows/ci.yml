@@ -19,8 +19,21 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Install deps
-        run: npm ci
+      - name: Show versions
+        run: node -v && npm -v
+
+      - name: Clean cache
+        run: npm cache clean --force
+
+      - name: Install deps (ci with fallback)
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+          else
+            npm install --no-audit --no-fund
+          fi
+        env:
+          NPM_CONFIG_LEGACY_PEER_DEPS: true
 
       - name: Lint (if present)
         run: npm run lint --if-present
