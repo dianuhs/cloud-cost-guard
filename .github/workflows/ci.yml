@@ -18,7 +18,7 @@ jobs:
           pwd
           ls -la
 
-      - name: Locate package.json
+      - name: Locate package.json (set PKG_DIR and LOCKFILE)
         run: |
           if [ -f package.json ]; then
             echo "PKG_DIR=." >> $GITHUB_ENV
@@ -29,19 +29,32 @@ jobs:
           elif [ -f web/package.json ]; then
             echo "PKG_DIR=web" >> $GITHUB_ENV
           else
-            echo "package.json not found in repo root or common subfolders." >&2
+            echo "❌ package.json not found in repo root or common subfolders." >&2
             echo "Tree snapshot:"
             ls -la
             exit 1
           fi
-          echo "Using PKG_DIR=$(cat $GITHUB_ENV | grep PKG_DIR | tail -n1 | cut -d'=' -f2)"
+          if [ -f "$(cat $GITHUB_ENV | grep PKG_DIR | tail -n1 | cut -d'=' -f2)/package-lock.json" ]; then
+            echo "LOCKFILE=true" >> $GITHUB_ENV
+          else
+            echo "LOCKFILE=false" >> $GITHUB_ENV
+          fi
+          echo "Detected PKG_DIR=$(cat $GITHUB_ENV | grep PKG_DIR | tail -n1 | cut -d'=' -f2)"
+          echo "LOCKFILE=$(cat $GITHUB_ENV | grep LOCKFILE | tail -n1 | cut -d'=' -f2)"
 
-      - name: Use Node.js 20 (with npm cache)
+      - name: Use Node.js 20 (cache with lockfile)
+        if: env.LOCKFILE == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: ${{ env.PKG_DIR }}/package-lock.json
+
+      - name: Use Node.js 20 (no cache)
+        if: env.LOCKFILE != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
       - name: Show versions
         run: |
