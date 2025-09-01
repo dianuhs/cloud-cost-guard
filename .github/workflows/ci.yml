@@ -24,7 +24,7 @@ jobs:
           node -v
           npm -v
 
-      - name: Clean cache
+      - name: Clean npm cache
         run: npm cache clean --force
 
       - name: Install deps (ci with fallback)
@@ -43,10 +43,10 @@ jobs:
       - name: Build (verbose, tolerant)
         env:
           # Avoid failing on warnings in CRA/CRACO
-          CI: false
+          CI: "false"
           # Skip CRA's eslint plugin (compile still runs)
-          DISABLE_ESLINT_PLUGIN: true
-          # Give Node a bit more memory in case
+          DISABLE_ESLINT_PLUGIN: "true"
+          # Give Node a bit more memory
           NODE_OPTIONS: --max_old_space_size=4096
         run: |
           echo "Starting build..."
