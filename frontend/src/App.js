@@ -732,13 +732,16 @@ ${finding.suggested_action}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Data Source banner */}
         <div className="mb-6">
-          <Alert className="bg-blue-50 border-blue-200">
-            <Activity className="h-4 w-4 text-blue-600" />
-            <AlertDescription className="text-blue-800">
-              <span className="font-medium">Data Source:</span> AWS Cost &amp; Usage Reports • CloudWatch Metrics • Resource Inventory APIs
-              <span className="ml-4 text-blue-700">Last Updated: {formatTimestamp(kpis.last_updated || summary?.generated_at)}</span>
-            </AlertDescription>
-          </Alert>
+          <Alert className="bg-blue-50 border-blue-200 alert-compact">
+  <div className="flex items-center gap-2 flex-wrap">
+    <Activity className="h-4 w-4 text-blue-600" />
+    <AlertDescription className="text-blue-800">
+      <span className="font-medium">Data Source:</span> AWS Cost &amp; Usage Reports • CloudWatch Metrics • Resource Inventory APIs
+      <span className="ml-4 text-blue-700">Last Updated: {formatTimestamp(kpis.last_updated || summary?.generated_at)}</span>
+    </AlertDescription>
+  </div>
+</Alert>
+
         </div>
 
         {/* KPIs */}
