@@ -2,30 +2,82 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
+
+permissions:
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Use Node.js 20
+      - name: Locate package.json (set PKG_DIR and LOCKFILE)
+        id: locate
+        shell: bash
+        run: |
+          set -e
+          # Find your app directory (root, frontend/, app/, or web/)
+          for dir in . frontend app web; do
+            if [ -f "$dir/package.json" ]; then
+              echo "PKG_DIR=$dir" >> $GITHUB_ENV
+              echo "Using package dir: $dir"
+              break
+            fi
+          done
+          if [ -z "${PKG_DIR:-}" ]; then
+            echo "::error::No package.json found at repo root, frontend/, app/, or web/."
+            exit 254
+          fi
+
+          # Detect lockfile (so we can enable caching correctly)
+          if [ -f "$PKG_DIR/package-lock.json" ]; then
+            echo "LOCKFILE=true" >> $GITHUB_ENV
+            echo "LOCKFILE_PATH=$PKG_DIR/package-lock.json" >> $GITHUB_ENV
+          elif [ -f "$PKG_DIR/npm-shrinkwrap.json" ]; then
+            echo "LOCKFILE=true" >> $GITHUB_ENV
+            echo "LOCKFILE_PATH=$PKG_DIR/npm-shrinkwrap.json" >> $GITHUB_ENV
+          elif [ -f "$PKG_DIR/yarn.lock" ]; then
+            echo "LOCKFILE=true" >> $GITHUB_ENV
+            echo "LOCKFILE_PATH=$PKG_DIR/yarn.lock" >> $GITHUB_ENV
+          else
+            echo "LOCKFILE=false" >> $GITHUB_ENV
+          fi
+
+      - name: Use Node.js 20 (with cache)
+        if: env.LOCKFILE == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
+          cache-dependency-path: ${{ env.LOCKFILE_PATH }}
 
-      - name: Install deps
-        run: npm ci
+      - name: Use Node.js 20 (no cache)
+        if: env.LOCKFILE != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        working-directory: ${{ env.PKG_DIR }}
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --no-audit --no-fund
+          else
+            npm install --no-audit --no-fund
+          fi
 
       - name: Lint (if present)
+        working-directory: ${{ env.PKG_DIR }}
         run: npm run lint --if-present
 
       - name: Build
-        run: npm run build
+        working-directory: ${{ env.PKG_DIR }}
         env:
           CI: true
+        run: npm run build
