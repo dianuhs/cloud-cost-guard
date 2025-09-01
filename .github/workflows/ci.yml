@@ -21,33 +21,42 @@ jobs:
         id: locate
         shell: bash
         run: |
-          set -e
-          # Find your app directory (root, frontend/, app/, or web/)
+          set -euo pipefail
+          PKG_DIR=""
           for dir in . frontend app web; do
             if [ -f "$dir/package.json" ]; then
-              echo "PKG_DIR=$dir" >> $GITHUB_ENV
-              echo "Using package dir: $dir"
+              PKG_DIR="$dir"
               break
             fi
           done
-          if [ -z "${PKG_DIR:-}" ]; then
+
+          if [ -z "$PKG_DIR" ]; then
             echo "::error::No package.json found at repo root, frontend/, app/, or web/."
             exit 254
           fi
 
-          # Detect lockfile (so we can enable caching correctly)
+          echo "Using package dir: $PKG_DIR"
+          # make it available to this job's later steps
+          echo "PKG_DIR=$PKG_DIR" >> "$GITHUB_ENV"
+
+          # Detect lockfile (so setup-node can cache correctly)
           if [ -f "$PKG_DIR/package-lock.json" ]; then
-            echo "LOCKFILE=true" >> $GITHUB_ENV
-            echo "LOCKFILE_PATH=$PKG_DIR/package-lock.json" >> $GITHUB_ENV
+            echo "LOCKFILE=true" >> "$GITHUB_ENV"
+            echo "LOCKFILE_PATH=$PKG_DIR/package-lock.json" >> "$GITHUB_ENV"
           elif [ -f "$PKG_DIR/npm-shrinkwrap.json" ]; then
-            echo "LOCKFILE=true" >> $GITHUB_ENV
-            echo "LOCKFILE_PATH=$PKG_DIR/npm-shrinkwrap.json" >> $GITHUB_ENV
+            echo "LOCKFILE=true" >> "$GITHUB_ENV"
+            echo "LOCKFILE_PATH=$PKG_DIR/npm-shrinkwrap.json" >> "$GITHUB_ENV"
           elif [ -f "$PKG_DIR/yarn.lock" ]; then
-            echo "LOCKFILE=true" >> $GITHUB_ENV
-            echo "LOCKFILE_PATH=$PKG_DIR/yarn.lock" >> $GITHUB_ENV
+            echo "LOCKFILE=true" >> "$GITHUB_ENV"
+            echo "LOCKFILE_PATH=$PKG_DIR/yarn.lock" >> "$GITHUB_ENV"
           else
-            echo "LOCKFILE=false" >> $GITHUB_ENV
+            echo "LOCKFILE=false" >> "$GITHUB_ENV"
           fi
+
+      - name: Show app folder contents (debug)
+        run: |
+          echo "Listing $PKG_DIR"
+          ls -la "$PKG_DIR"
 
       - name: Use Node.js 20 (with cache)
         if: env.LOCKFILE == 'true'
