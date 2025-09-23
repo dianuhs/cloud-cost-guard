@@ -7,6 +7,9 @@ import { format } from "date-fns";
 // Local brand icon
 import logo from "./assets/cloud-and-capital-icon.png";
 
+// ⬇️ NEW: Auto-Triage UI (AI/automation demo)
+import TriageCard from "./components/TriageCard";
+
 // Recharts
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -193,7 +196,7 @@ const KPICard = ({ title, value, change, icon: Icon, subtitle, dataFreshness }) 
           {subtitle}
         </p>
       ) : (
-        subtitle && <p className="text-xs text-brand-muted mt-1">{subtitle}</p>
+        <p className="text-xs text-brand-muted mt-1">{subtitle}</p>
       )}
     </CardContent>
   </Card>
@@ -215,7 +218,7 @@ const CostTrendChart = ({ data, height = 300, label = "Cost trends over the last
             <XAxis dataKey="formatted_date" stroke="#7A6B5D" fontSize={12} tick={{ fill: "#7A6B5D" }} />
             <YAxis stroke="#7A6B5D" fontSize={12} tick={{ fill: "#7A6B5D" }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
             <Tooltip
-              contentStyle={{ backgroundColor: "#FFF", border: "1px solid #E9E3DE", borderRadius: 8, color: "#0A0A0A" }}
+              contentStyle={{ backgroundColor: "#FFF", border: "1px solid "#E9E3DE", borderRadius: 8, color: "#0A0A0A" }}
               formatter={(value) => [formatCurrency(value), "Daily Cost"]}
               labelFormatter={(label) => `Date: ${label}`}
             />
@@ -730,18 +733,23 @@ ${finding.suggested_action}
 
       {/* Body */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        {/* ⬇️ NEW: AI/Automation — Auto-Triage Cost Spike */}
+        <div className="mb-6">
+          <TriageCard />
+        </div>
+
         {/* Data Source banner */}
         <div className="mb-6">
           <Alert className="bg-blue-50 border-blue-200 alert-compact">
-  <div className="flex items-center gap-2 flex-wrap">
-    <Activity className="h-4 w-4 text-blue-600" />
-    <AlertDescription className="text-blue-800">
-      <span className="font-medium">Data Source:</span> AWS Cost &amp; Usage Reports • CloudWatch Metrics • Resource Inventory APIs
-      <span className="ml-4 text-blue-700">Last Updated: {formatTimestamp(kpis.last_updated || summary?.generated_at)}</span>
-    </AlertDescription>
-  </div>
-</Alert>
-
+            <div className="flex items-center gap-2 flex-wrap">
+              <Activity className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-blue-800">
+                <span className="font-medium">Data Source:</span> AWS Cost &amp; Usage Reports • CloudWatch Metrics • Resource Inventory APIs
+                <span className="ml-4 text-blue-700">Last Updated: {formatTimestamp(kpis.last_updated || summary?.generated_at)}</span>
+              </AlertDescription>
+            </div>
+          </Alert>
         </div>
 
         {/* KPIs */}
@@ -754,7 +762,7 @@ ${finding.suggested_action}
             subtitle="vs last period"
             dataFreshness={kpis.data_freshness_hours}
           />
-        	  <KPICard
+          <KPICard
             title="Savings Ready"
             value={formatCurrency(savingsReady)}
             icon={TrendingDown}
@@ -878,7 +886,7 @@ ${finding.suggested_action}
               <Card className="kpi-card">
                 <CardHeader>
                   <CardTitle className="text-brand-ink">Recent Findings</CardTitle>
-                  <CardDescription className="text-brand-muted">Latest cost optimization opportunities</CardDescription>
+                <CardDescription className="text-brand-muted">Latest cost optimization opportunities</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
@@ -913,3 +921,4 @@ export default function App() {
     </div>
   );
 }
+
