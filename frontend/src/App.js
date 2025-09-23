@@ -92,7 +92,7 @@ const getSeverityColor = (severity) => ({
   high: "severity-high",
   medium: "severity-medium",
   low: "severity-low",
-}[String(severity || "").toLowerCase()] || "severity-medium");
+}[String(severity || "").toLowerCase()] || "severity-medium";
 
 // Uniform severity icons (force size/color everywhere)
 const getSeverityIcon = (severity) => {
@@ -196,7 +196,7 @@ const KPICard = ({ title, value, change, icon: Icon, subtitle, dataFreshness }) 
           {subtitle}
         </p>
       ) : (
-        <p className="text-xs text-brand-muted mt-1">{subtitle}</p>
+        subtitle && <p className="text-xs text-brand-muted mt-1">{subtitle}</p>
       )}
     </CardContent>
   </Card>
@@ -218,7 +218,7 @@ const CostTrendChart = ({ data, height = 300, label = "Cost trends over the last
             <XAxis dataKey="formatted_date" stroke="#7A6B5D" fontSize={12} tick={{ fill: "#7A6B5D" }} />
             <YAxis stroke="#7A6B5D" fontSize={12} tick={{ fill: "#7A6B5D" }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
             <Tooltip
-              contentStyle={{ backgroundColor: "#FFF", border: "1px solid "#E9E3DE", borderRadius: 8, color: "#0A0A0A" }}
+              contentStyle={{ backgroundColor: "#FFF", border: "1px solid #E9E3DE", borderRadius: 8, color: "#0A0A0A" }}
               formatter={(value) => [formatCurrency(value), "Daily Cost"]}
               labelFormatter={(label) => `Date: ${label}`}
             />
@@ -733,7 +733,6 @@ ${finding.suggested_action}
 
       {/* Body */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
         {/* ⬇️ NEW: AI/Automation — Auto-Triage Cost Spike */}
         <div className="mb-6">
           <TriageCard />
@@ -886,7 +885,7 @@ ${finding.suggested_action}
               <Card className="kpi-card">
                 <CardHeader>
                   <CardTitle className="text-brand-ink">Recent Findings</CardTitle>
-                <CardDescription className="text-brand-muted">Latest cost optimization opportunities</CardDescription>
+                  <CardDescription className="text-brand-muted">Latest cost optimization opportunities</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
