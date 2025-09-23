@@ -41,7 +41,6 @@ const API = "/api";
 const toNumber = (v) => {
   if (typeof v === "number") return v;
   if (typeof v === "string") {
-    // eslint fix: no-useless-escape -> use [^0-9.-]
     const n = Number(v.replace?.(/[^0-9.-]/g, "") ?? v);
     return Number.isFinite(n) ? n : 0;
   }
@@ -92,7 +91,7 @@ const getSeverityColor = (severity) => ({
   high: "severity-high",
   medium: "severity-medium",
   low: "severity-low",
-}[String(severity || "").toLowerCase()] || "severity-medium";
+}[String(severity || "").toLowerCase()] || "severity-medium");
 
 // Uniform severity icons (force size/color everywhere)
 const getSeverityIcon = (severity) => {
