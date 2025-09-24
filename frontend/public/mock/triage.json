@@ -1,0 +1,49 @@
+{
+  "detected_at": "2025-09-23T10:15:00-07:00",
+  "window": "24h",
+  "spike_amount_usd": 3245.27,
+  "baseline_usd": 1812.45,
+  "current_usd": 5057.72,
+  "top_drivers": [
+    { "service": "AWS Lambda", "account": "prod", "region": "us-east-1", "tag": "env:prod", "delta_usd": 1204.18, "pct": 37.1 },
+    { "service": "Amazon S3", "account": "analytics", "region": "us-west-2", "tag": "team:data", "delta_usd": 803.91, "pct": 24.8 },
+    { "service": "Amazon EC2", "account": "prod", "region": "us-east-1", "tag": "asg:raw_ingest", "delta_usd": 612.10, "pct": 18.8 },
+    { "service": "AWS NAT Gateway", "account": "prod", "region": "us-east-1", "tag": "subnet:public-a", "delta_usd": 412.80, "pct": 12.6 }
+  ],
+  "suspected_causes": [
+    "Unbounded Lambda concurrency after deploy 2025-09-21 18:10 PT",
+    "S3 lifecycle disabled on bucket s3://raw-ingest-logs (expensive small puts)",
+    "NAT data processing surge due to analytics job reconfiguration"
+  ],
+  "proposed_actions": [
+    {
+      "title": "Throttle Lambda concurrency to 200 for raw_ingest_processor",
+      "risk": "Low",
+      "est_savings_usd": 900,
+      "commands": [
+        "aws lambda put-function-concurrency --function-name raw_ingest_processor --reserved-concurrent-executions 200",
+        "aws cloudwatch put-metric-alarm --alarm-name raw_ingest_processor-err --metric-name Errors --namespace AWS/Lambda --statistic Sum --period 60 --threshold 10 --comparison-operator GreaterThanThreshold --evaluation-periods 1 --dimensions Name=FunctionName,Value=raw_ingest_processor"
+      ],
+      "rollbacks": [
+        "aws lambda delete-function-concurrency --function-name raw_ingest_processor"
+      ]
+    },
+    {
+      "title": "Re-enable S3 lifecycle for raw-ingest-logs (30d → IA)",
+      "risk": "Low",
+      "est_savings_usd": 350,
+      "commands": [
+        "aws s3api put-bucket-lifecycle-configuration --bucket raw-ingest-logs --lifecycle-configuration file://lifecycle.json"
+      ]
+    },
+    {
+      "title": "Investigate EC2 ASG scale-out in raw_ingest",
+      "risk": "Medium",
+      "est_savings_usd": 480,
+      "commands": [
+        "aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names raw_ingest_asg",
+        "aws autoscaling update-auto-scaling-group --auto-scaling-group-name raw_ingest_asg --max-size 50 --desired-capacity 20"
+      ]
+    }
+  ]
+}
