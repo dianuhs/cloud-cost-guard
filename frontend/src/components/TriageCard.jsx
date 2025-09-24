@@ -1,293 +1,214 @@
-// frontend/src/components/TriageCard.jsx
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "./ui/card";
+import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
+import { Separator } from "./ui/separator";
+import { AlertTriangle, Loader2, Play, Clipboard, CheckCircle } from "lucide-react";
 
-/**
- * TriageCard.jsx
- * Portfolio-friendly UI for “Auto-Triage Cost Spike”.
- * - Shows a spike banner when an anomaly exists
- * - Summarizes delta $, % change, top contributors
- * - “Explain” opens a modal with a concise narrative
- * - Action buttons (Slack / Jira / Generate PR) are stubbed with in-UI toasts
- *
- * v0 (mock): Hard-coded triage data for look-and-feel.
- * Next steps: fetch from /api/anomaly and /api/triage, then wire real actions.
- */
+const formatCurrency = (amount) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    .format(Number(amount || 0));
 
-const fmtUSD = (n) =>
-  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(n);
-
-const chip = {
-  base: {
-    display: "inline-block",
-    padding: "4px 10px",
-    borderRadius: 999,
-    fontSize: 12,
-    fontWeight: 600,
-    background: "#eef7ef",
-    border: "1px solid #d5ebd7",
-  },
-  danger: {
-    background: "#fdecec",
-    border: "1px solid #f6caca",
-  },
-  neutral: {
-    background: "#eef2f7",
-    border: "1px solid #d9e1ef",
-  },
+const formatWhen = (iso) => {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "-";
+  return d.toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 };
-
-const styles = {
-  container: {
-    border: "1px solid #e8e8e8",
-    borderRadius: 16,
-    padding: 16,
-    background: "#fff",
-    boxShadow: "0 10px 18px rgba(0,0,0,0.04)",
-  },
-  banner: {
-    background: "linear-gradient(90deg, rgba(255, 60, 60, 0.1), rgba(255, 107, 107, 0.08))",
-    border: "1px solid #ffd5d5",
-    color: "#b80000",
-    padding: "10px 12px",
-    borderRadius: 12,
-    fontWeight: 600,
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 12,
-  },
-  grid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 },
-  section: {
-    border: "1px solid #f0f0f0",
-    borderRadius: 12,
-    padding: 12,
-    background: "#fafbfc",
-  },
-  h3: { margin: "6px 0 8px 0", fontSize: 14, color: "#333" },
-  h2: { margin: "0 0 4px 0", fontSize: 18, fontWeight: 700 },
-  list: { margin: 0, paddingLeft: 16, color: "#444", lineHeight: 1.5 },
-  btnRow: { display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 },
-  button: {
-    padding: "10px 12px",
-    borderRadius: 10,
-    border: "1px solid #e3e3e3",
-    background: "#fff",
-    cursor: "pointer",
-    fontWeight: 600,
-  },
-  buttonPrimary: {
-    background: "#0f62fe",
-    color: "#fff",
-    border: "1px solid #0f62fe",
-  },
-  savingsPill: {
-    ...chip.base,
-    background: "#ecf9f0",
-    border: "1px solid #d2f0da",
-  },
-  toast: {
-    position: "fixed",
-    right: 16,
-    bottom: 16,
-    background: "#111",
-    color: "#fff",
-    padding: "12px 14px",
-    borderRadius: 10,
-    boxShadow: "0 10px 18px rgba(0,0,0,0.25)",
-    fontSize: 14,
-    zIndex: 1000,
-  },
-  modalBack: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(0,0,0,0.45)",
-    display: "grid",
-    placeItems: "center",
-    zIndex: 999,
-  },
-  modalCard: {
-    width: "min(720px, 92vw)",
-    background: "#fff",
-    borderRadius: 14,
-    padding: 20,
-    boxShadow: "0 25px 40px rgba(0,0,0,0.2)",
-  },
-  modalTitle: { margin: "0 0 10px 0" },
-  kbd: {
-    fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace",
-    background: "#f7f7f7",
-    border: "1px solid #eaeaea",
-    padding: "2px 6px",
-    borderRadius: 6,
-    fontSize: 12,
-  },
-};
-
-const MOCK_TRIAGE = {
-  window: "24h",
-  delta_usd: 412.12,
-  pct_change: 0.28,
-  top_contributors: [
-    { dimension: "service", key: "EC2", delta: 338.9 },
-    { dimension: "service", key: "EBS", delta: 53.7 },
-  ],
-  suspects: [
-    {
-      resource_id: "i-0abc123",
-      service: "EC2",
-      type: "c6i.2xlarge",
-      region: "us-west-2",
-      tags: { Env: "dev" },
-      utilization: { cpu_avg: 2.1, net_tx_mb: 14 },
-      est_monthly_cost: 240.0,
-      fixes: [
-        { action: "stop_instance", label: "Stop instance now", est_savings_monthly: 140 },
-        { action: "rightsize", label: "Rightsize to c6i.large", est_savings_monthly: 92 },
-      ],
-    },
-  ],
-  confidence: 0.78,
-};
-
-function Pill({ children, tone = "neutral" }) {
-  const style =
-    tone === "danger" ? { ...chip.base, ...chip.danger } : tone === "success" ? { ...chip.base } : { ...chip.base, ...chip.neutral };
-  return <span style={style}>{children}</span>;
-}
-
-function Toast({ message, onClose, duration = 2200 }) {
-  useEffect(() => {
-    const t = setTimeout(onClose, duration);
-    return () => clearTimeout(t);
-  }, [onClose, duration]);
-  return <div style={styles.toast}>{message}</div>;
-}
 
 export default function TriageCard() {
-  const [showModal, setShowModal] = useState(false);
-  const [toast, setToast] = useState(null);
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [runningIdx, setRunningIdx] = useState(null);
+  const [doneIdx, setDoneIdx] = useState(null);
 
-  const data = useMemo(() => MOCK_TRIAGE, []);
-  const hasSpike = data && (data.delta_usd ?? 0) > 0 && (data.pct_change ?? 0) > 0.15;
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        // Static file in /public/mock/triage.json
+        const res = await fetch("/mock/triage.json", { cache: "no-store" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        if (!cancelled) setData(json);
+      } catch (e) {
+        console.error("triage fetch failed:", e);
+        if (!cancelled) setError("Could not load triage data");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
-  const explainText = useMemo(() => {
-    // Stubbed “AI explanation” for v0
-    return [
-      `In the past ${data.window}, total spend increased by ${fmtUSD(data.delta_usd)} (↑${Math.round(
-        data.pct_change * 100
-      )}%) versus trend.`,
-      `~${Math.round((data.top_contributors[0].delta / data.delta_usd) * 100)}% of the delta is from ${data.top_contributors[0].key}.`,
-      `Primary suspect: ${data.suspects[0].resource_id} (${data.suspects[0].type}, ${data.suspects[0].region}) — idle CPU ~${data.suspects[0].utilization.cpu_avg}%.`,
-      `Suggested fixes: stop now (${fmtUSD(data.suspects[0].fixes[0].est_savings_monthly)}/mo) or rightsize (${fmtUSD(
-        data.suspects[0].fixes[1].est_savings_monthly
-      )}/mo).`,
-    ].join(" ");
+  const spikePct = useMemo(() => {
+    if (!data) return 0;
+    const base = Number(data.baseline_usd || 0);
+    const cur = Number(data.current_usd || 0);
+    if (base <= 0) return 0;
+    return ((cur - base) / base) * 100;
   }, [data]);
 
-  const postSlack = () => setToast("Posted triage summary to #cloud-costs ✅");
-  const createJira = () => setToast("Created Jira ticket DEV-123 ✅");
-  const generatePR = () => setToast("Opened PR #45 with tagging policy ✅");
+  const copy = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      alert("Commands copied to clipboard");
+    } catch {
+      alert("Copy failed. You can select the text manually.");
+    }
+  };
+
+  const simulateRun = (idx) => {
+    setRunningIdx(idx);
+    setDoneIdx(null);
+    setTimeout(() => {
+      setRunningIdx(null);
+      setDoneIdx(idx);
+    }, 1500);
+  };
+
+  if (loading) {
+    return (
+      <Card className="kpi-card border-red-200 bg-red-50/40">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-red-700">
+            <Loader2 className="h-5 w-5 animate-spin" /> Auto‑Triage: Cost Spike (AI)
+          </CardTitle>
+          <CardDescription className="text-red-600">Loading…</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <Card className="kpi-card border-red-200 bg-red-50/40">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-red-700">
+            <AlertTriangle className="h-5 w-5" /> Auto‑Triage: Cost Spike (AI)
+          </CardTitle>
+          <CardDescription className="text-red-600">{error || "No triage data"}</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
 
   return (
-    <div style={styles.container} aria-live="polite">
-      {hasSpike && (
-        <div style={styles.banner}>
-          <span style={{ fontSize: 18 }}>🚨</span>
-          <span>
-            Cost spike detected: <strong>{fmtUSD(data.delta_usd)}</strong> (↑{Math.round(data.pct_change * 100)}%) vs 7-day trend
+    <Card className="kpi-card border-red-200 bg-red-50/40">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-red-700">
+          <AlertTriangle className="h-5 w-5" /> Auto‑Triage: Cost Spike (AI)
+        </CardTitle>
+        <CardDescription className="text-red-700/80">
+          Spike detected in the last {data.window || "24h"} · Detected {formatWhen(data.detected_at)}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Summary row */}
+        <div className="flex flex-wrap items-center gap-4">
+          <Badge className="bg-red-600 text-white rounded-md px-2 py-1">Spike {formatCurrency(data.spike_amount_usd)}</Badge>
+          <span className="text-sm text-red-800/90">
+            Baseline {formatCurrency(data.baseline_usd)} → Current {formatCurrency(data.current_usd)} ({spikePct >= 0 ? "+" : ""}{spikePct.toFixed(1)}%)
           </span>
         </div>
-      )}
 
-      <div style={styles.grid}>
-        {/* Summary */}
-        <div style={styles.section}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-            <h2 style={styles.h2}>Triage Summary</h2>
-            <Pill tone="danger">Spike</Pill>
+        <Separator />
+
+        {/* Drivers */}
+        <div className="space-y-2">
+          <div className="text-sm font-medium text-red-800/90">Top Drivers</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {(data.top_drivers || []).slice(0, 6).map((d, i) => (
+              <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-white/70 border border-red-100">
+                <div className="text-sm text-red-900">
+                  <div className="font-medium">{d.service || "—"}</div>
+                  <div className="text-xs text-red-800/80">
+                    {(d.account || "—")} · {(d.region || "—")}{d.tag ? ` · ${d.tag}` : ""}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-semibold text-red-700">+{formatCurrency(d.delta_usd || 0)}</div>
+                  {Number.isFinite(d.pct) && <div className="text-xs text-red-600">{d.pct.toFixed?.(1) || d.pct}%</div>}
+                </div>
+              </div>
+            ))}
           </div>
-          <div style={{ color: "#333", marginBottom: 8 }}>
-            <div>
-              Delta: <strong>{fmtUSD(data.delta_usd)}</strong> • Change: <strong>↑{Math.round(data.pct_change * 100)}%</strong>
-            </div>
-          </div>
-          <div style={{ marginTop: 8 }}>
-            <h3 style={styles.h3}>Top contributors</h3>
-            <ul style={styles.list}>
-              {data.top_contributors.map((c) => (
-                <li key={c.key}>
-                  {c.key}: <strong>{fmtUSD(c.delta)}</strong>
-                </li>
-              ))}
+        </div>
+
+        {/* Suspected causes */}
+        {(Array.isArray(data.suspected_causes) && data.suspected_causes.length > 0) && (
+          <div className="space-y-2">
+            <div className="text-sm font-medium text-red-800/90">Suspected Causes</div>
+            <ul className="list-disc pl-5 text-sm text-red-900">
+              {data.suspected_causes.map((c, i) => <li key={i}>{c}</li>)}
             </ul>
           </div>
-          <div style={styles.btnRow}>
-            <button style={{ ...styles.button, ...styles.buttonPrimary }} onClick={() => setShowModal(true)}>
-              Explain
-            </button>
-            <button style={styles.button} onClick={postSlack}>
-              Post to Slack
-            </button>
-            <button style={styles.button} onClick={createJira}>
-              Create Jira
-            </button>
-            <button style={styles.button} onClick={generatePR}>
-              Generate PR
-            </button>
-          </div>
+        )}
+
+        <Separator />
+
+        {/* Proposed actions */}
+        <div className="space-y-3">
+          <div className="text-sm font-medium text-red-800/90">Proposed Remediations</div>
+          {(data.proposed_actions || []).map((a, i) => (
+            <div key={i} className="p-3 rounded-lg bg-white/70 border border-red-100 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-semibold text-red-900">{a.title}</div>
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-red-100 text-red-800 rounded-md">{a.risk || "Medium"} risk</Badge>
+                  {a.est_savings_usd ? (
+                    <Badge className="bg-green-100 text-green-700 rounded-md">
+                      Save {formatCurrency(a.est_savings_usd)}/mo
+                    </Badge>
+                  ) : null}
+                </div>
+              </div>
+
+              {Array.isArray(a.commands) && a.commands.length > 0 && (
+                <div className="rounded-md border border-red-100 bg-red-50/60 p-2">
+                  <pre className="text-xs m-0 overflow-auto"><code>{a.commands.join("\n")}</code></pre>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  className="btn-brand-primary rounded-lg"
+                  onClick={() => simulateRun(i)}
+                  disabled={runningIdx === i}
+                >
+                  {runningIdx === i ? (
+                    <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Running…</>
+                  ) : doneIdx === i ? (
+                    <><CheckCircle className="h-4 w-4 mr-1" /> Done</>
+                  ) : (
+                    <><Play className="h-4 w-4 mr-1" /> Simulate Fix</>
+                  )}
+                </Button>
+                {Array.isArray(a.commands) && a.commands.length > 0 && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="btn-brand-outline rounded-lg"
+                    onClick={() => copy(a.commands.join("\n"))}
+                  >
+                    <Clipboard className="h-4 w-4 mr-1" /> Copy Commands
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
-
-        {/* Suspect */}
-        <div style={styles.section}>
-          <h2 style={styles.h2}>Primary Suspect</h2>
-          <div style={{ marginBottom: 10, color: "#333" }}>
-            <div>
-              <span style={styles.kbd}>{data.suspects[0].resource_id}</span> • {data.suspects[0].type} • {data.suspects[0].region}
-            </div>
-            <div style={{ marginTop: 6 }}>
-              Utilization: CPU avg {data.suspects[0].utilization.cpu_avg}% • Net TX {data.suspects[0].utilization.net_tx_mb} MB
-            </div>
-            <div style={{ marginTop: 6 }}>
-              Tags:{" "}
-              {Object.entries(data.suspects[0].tags).map(([k, v]) => (
-                <span key={k} style={{ marginRight: 6 }}>
-                  <Pill>{k}:{v}</Pill>
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <h3 style={styles.h3}>Recommended fixes</h3>
-          <ul style={styles.list}>
-            {data.suspects[0].fixes.map((f, i) => (
-              <li key={f.action} style={{ marginBottom: 6 }}>
-                {f.label}{" "}
-                <span style={{ marginLeft: 6 }}>
-                  <span style={styles.savingsPill}>{fmtUSD(f.est_savings_monthly)}/mo</span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-
-      {/* Explain Modal */}
-      {showModal && (
-        <div style={styles.modalBack} role="dialog" aria-modal="true" onClick={() => setShowModal(false)}>
-          <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
-            <h3 style={styles.modalTitle}>Why this spike?</h3>
-            <p style={{ lineHeight: 1.6, color: "#333" }}>{explainText}</p>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
-              <button style={styles.button} onClick={() => setShowModal(false)}>
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Toast */}
-      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
-    </div>
+      </CardContent>
+    </Card>
   );
 }
