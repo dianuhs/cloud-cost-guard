@@ -1,0 +1,18 @@
+{
+  "movers": [
+    {
+      "service": "EC2-Instances",
+      "previous_cost": 94375.35,
+      "current_cost": 92543.25,
+      "change_amount": -1832.1,
+      "change_percent": -1.9
+    },
+    {
+      "service": "EBS",
+      "previous_cost": 31222.45,
+      "current_cost": 31845.22,
+      "change_amount": 622.77,
+      "change_percent": 2.0
+    }
+  ]
+}

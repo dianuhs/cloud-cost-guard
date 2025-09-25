@@ -1,0 +1,64 @@
+{
+  "generated_at": "2025-09-23T17:05:00-07:00",
+  "kpis": {
+    "total_30d_cost": 193025.15,
+    "wow_percent": 2.4,
+    "data_freshness_hours": 2,
+    "last_updated": "2025-09-23T16:55:00-07:00"
+  },
+  "daily_series": [
+    {
+      "dateISO": "2025-08-26",
+      "value": 6000.1
+    },
+    {
+      "dateISO": "2025-09-23",
+      "value": 7095.53
+    }
+  ],
+  "top_products": [
+    {
+      "product": "EC2-Instances",
+      "amount_usd": 92543.25,
+      "percent_of_total": 49.1,
+      "wow_delta": -1832.1
+    },
+    {
+      "product": "EBS",
+      "amount_usd": 31845.22,
+      "percent_of_total": 16.9,
+      "wow_delta": 622.77
+    },
+    {
+      "product": "S3",
+      "amount_usd": 22790.14,
+      "percent_of_total": 12.1,
+      "wow_delta": -312.45
+    },
+    {
+      "product": "RDS",
+      "amount_usd": 16421.88,
+      "percent_of_total": 8.7,
+      "wow_delta": 512.33
+    },
+    {
+      "product": "Lambda",
+      "amount_usd": 9580.66,
+      "percent_of_total": 5.1,
+      "wow_delta": 241.12
+    },
+    {
+      "product": "CloudWatch",
+      "amount_usd": 6422.03,
+      "percent_of_total": 3.4,
+      "wow_delta": 0.0
+    },
+    {
+      "product": "ELB",
+      "amount_usd": 4891.7,
+      "percent_of_total": 2.6,
+      "wow_delta": 102.8
+    }
+  ],
+  "recent_findings": []
+}

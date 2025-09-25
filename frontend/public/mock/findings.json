@@ -1,0 +1,21 @@
+[
+  {
+    "title": "m5.2xlarge prod-web-server-01 under 8.3% CPU utilization",
+    "type": "underutilized-ec2",
+    "severity": "HIGH",
+    "confidence": "HIGH",
+    "monthly_savings_usd_est": 6654.4,
+    "evidence": {
+      "resource_id": "i-0a1b2c3d4e5f6789a",
+      "region": "us-east-1",
+      "instance_type": "m5.2xlarge"
+    },
+    "risk_level": "Medium",
+    "implementation_time": "2-4 hours",
+    "suggested_action": "Downsize to m5.large or enable auto-scaling on the ASG with CPU and request-rate targets.",
+    "commands": [
+      "aws ec2 describe-instances --instance-ids i-0a1b2c3d4e5f6789a --region us-east-1"
+    ],
+    "last_analyzed": "2025-08-28T15:37:00-07:00"
+  }
+]
