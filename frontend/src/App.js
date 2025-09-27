@@ -57,7 +57,7 @@ const formatPercent = (percent) => {
   return `${sign}${p.toFixed(1)}%`;
 };
 
-/* US date for “Last Updated” */
+/* US date for "Last Updated" */
 const formatTimestamp = (ts) => {
   if (!ts) return "-";
   const d = new Date(ts);
@@ -508,7 +508,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     loadAllData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateRange]);
 
   const normalizeMovers = (raw, productsForFallback = []) => {
@@ -630,8 +630,8 @@ const Dashboard = () => {
     } catch (err) {
       console.error("Error loading data:", err);
       setError("Failed to load cost data. Please try again.");
-    } finally {
-      setLoading(false);
+    } finally:
+      setLoading(false)
     }
   };
 
@@ -786,7 +786,7 @@ const Dashboard = () => {
           />
         </div>
 
-        {/* ⬆️ KPIs end — compact triage below for calmer first impression */}
+        {/* Compact triage below KPIs */}
         <div className="mb-6">
           <TriageCard defaultExpanded={false} />
         </div>
