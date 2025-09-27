@@ -5,11 +5,11 @@ import { Badge } from "./ui/badge";
 import { Separator } from "./ui/separator";
 import { AlertTriangle, Loader2, ChevronDown, ChevronUp, Clipboard, Play, CheckCircle, X } from "lucide-react";
 
-const formatCurrency = (amount) =>
+const fmt = (n) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    .format(Number(amount || 0));
+    .format(Number(n || 0));
 
-const formatWhen = (iso) => {
+const when = (iso) => {
   if (!iso) return "-";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "-";
@@ -34,14 +34,12 @@ export default function TriageCard({ defaultExpanded = false, onDismiss }) {
     let cancelled = false;
     (async () => {
       try {
-        setLoading(true);
         setError(null);
-        const res = await fetch("/mock/triage.json", { cache: "no-store" });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = await res.json();
-        if (!cancelled) setData(json);
+        const r = await fetch("/mock/triage.json", { cache: "no-store" });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const j = await r.json();
+        if (!cancelled) setData(j);
       } catch (e) {
-        console.error("triage fetch failed:", e);
         if (!cancelled) setError("Could not load triage data");
       } finally {
         if (!cancelled) setLoading(false);
@@ -52,10 +50,9 @@ export default function TriageCard({ defaultExpanded = false, onDismiss }) {
 
   const spikePct = useMemo(() => {
     if (!data) return 0;
-    const base = Number(data.baseline_usd || 0);
-    const cur = Number(data.current_usd || 0);
-    if (base <= 0) return 0;
-    return ((cur - base) / base) * 100;
+    const b = Number(data.baseline_usd || 0);
+    const c = Number(data.current_usd || 0);
+    return b > 0 ? ((c - b) / b) * 100 : 0;
   }, [data]);
 
   const copy = async (text) => {
@@ -67,12 +64,12 @@ export default function TriageCard({ defaultExpanded = false, onDismiss }) {
     }
   };
 
-  const simulateRun = (idx) => {
-    setRunningIdx(idx);
+  const simulateRun = (i) => {
+    setRunningIdx(i);
     setDoneIdx(null);
     setTimeout(() => {
       setRunningIdx(null);
-      setDoneIdx(idx);
+      setDoneIdx(i);
     }, 1200);
   };
 
@@ -88,6 +85,7 @@ export default function TriageCard({ defaultExpanded = false, onDismiss }) {
       </Card>
     );
   }
+
   if (error || !data) {
     return (
       <Card className="kpi-card border-amber-200 bg-amber-50/50">
@@ -110,33 +108,28 @@ export default function TriageCard({ defaultExpanded = false, onDismiss }) {
             <div>
               <CardTitle className="text-sm font-semibold text-amber-900">Auto-Triage: Cost Spike</CardTitle>
               <CardDescription className="text-amber-800/90">
-                Spike detected in the last {data.window || "24h"} • Detected {formatWhen(data.detected_at)}
+                Detected {when(data.detected_at)} • last {data.window || "24h"}
               </CardDescription>
             </div>
           </div>
-
           <div className="flex items-center gap-2">
             {!!onDismiss && (
               <Button size="sm" variant="outline" className="rounded-lg btn-brand-outline" onClick={onDismiss} title="Dismiss">
                 <X className="h-4 w-4" />
               </Button>
             )}
-            <Button
-              size="sm"
-              className="rounded-lg btn-brand-primary"
-              onClick={() => setExpanded((s) => !s)}
-            >
-              {expanded ? <><ChevronUp className="h-4 w-4 mr-1" /> Hide details</> : <><ChevronDown className="h-4 w-4 mr-1" /> View details</>}
+            <Button size="sm" className="rounded-lg btn-brand-primary" onClick={() => setExpanded((s) => !s)}>
+              {expanded ? <>Hide details</> : <>Investigate</>}
             </Button>
           </div>
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <Badge className="bg-amber-600 text-white rounded-md px-2 py-1">
-            Spike {formatCurrency(data.spike_amount_usd)}
+            {`Spike +${fmt(Math.max(0, Number(data.current_usd || 0) - Number(data.baseline_usd || 0)))} (last 24h)`}
           </Badge>
           <span className="text-sm text-amber-900">
-            Baseline {formatCurrency(data.baseline_usd)} → Current {formatCurrency(data.current_usd)} ({spikePct >= 0 ? "+" : ""}{spikePct.toFixed(1)}%)
+            Baseline {fmt(data.baseline_usd)} → Current {fmt(data.current_usd)} ({spikePct >= 0 ? "+" : ""}{spikePct.toFixed(1)}%)
           </span>
         </div>
       </CardHeader>
@@ -145,6 +138,7 @@ export default function TriageCard({ defaultExpanded = false, onDismiss }) {
         <CardContent className="space-y-4">
           <Separator />
 
+          {/* Top Drivers */}
           <div className="space-y-2">
             <div className="text-sm font-medium text-amber-900">Top Drivers</div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -157,15 +151,16 @@ export default function TriageCard({ defaultExpanded = false, onDismiss }) {
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-semibold text-amber-800">+{formatCurrency(d.delta_usd || 0)}</div>
-                    {Number.isFinite(d.pct) && <div className="text-xs text-amber-700">{d.pct.toFixed?.(1) || d.pct}%</div>}
+                    <div className="text-sm font-semibold text-amber-800">+{fmt(d.delta_usd || 0)}</div>
+                    {Number.isFinite(d.pct) && <div className="text-xs text-amber-700">{Number(d.pct).toFixed(1)}%</div>}
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {(Array.isArray(data.suspected_causes) && data.suspected_causes.length > 0) && (
+          {/* Suspected causes */}
+          {Array.isArray(data.suspected_causes) && data.suspected_causes.length > 0 && (
             <>
               <Separator />
               <div className="space-y-2">
@@ -177,7 +172,8 @@ export default function TriageCard({ defaultExpanded = false, onDismiss }) {
             </>
           )}
 
-          {(Array.isArray(data.proposed_actions) && data.proposed_actions.length > 0) && (
+          {/* Proposed actions */}
+          {Array.isArray(data.proposed_actions) && data.proposed_actions.length > 0 && (
             <>
               <Separator />
               <div className="space-y-3">
@@ -188,11 +184,7 @@ export default function TriageCard({ defaultExpanded = false, onDismiss }) {
                       <div className="text-sm font-semibold text-amber-900">{a.title}</div>
                       <div className="flex items-center gap-2">
                         <Badge className="bg-amber-100 text-amber-900 rounded-md">{a.risk || "Medium"} risk</Badge>
-                        {a.est_savings_usd ? (
-                          <Badge className="bg-green-100 text-green-700 rounded-md">
-                            Save {formatCurrency(a.est_savings_usd)}/mo
-                          </Badge>
-                        ) : null}
+                        {a.est_savings_usd ? <Badge className="bg-green-100 text-green-700 rounded-md">Save {fmt(a.est_savings_usd)}/mo</Badge> : null}
                       </div>
                     </div>
 
@@ -203,28 +195,12 @@ export default function TriageCard({ defaultExpanded = false, onDismiss }) {
                     )}
 
                     <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        className="btn-brand-primary rounded-lg"
-                        onClick={() => simulateRun(i)}
-                        disabled={runningIdx === i}
-                      >
-                        {runningIdx === i ? (
-                          <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Running…</>
-                        ) : doneIdx === i ? (
-                          <><CheckCircle className="h-4 w-4 mr-1" /> Done</>
-                        ) : (
-                          <><Play className="h-4 w-4 mr-1" /> Simulate Fix</>
-                        )}
+                      <Button size="sm" className="btn-brand-primary rounded-lg" onClick={() => simulateRun(i)} disabled={runningIdx === i}>
+                        {runningIdx === i ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Running…</> : doneIdx === i ? <><CheckCircle className="h-4 w-4 mr-1" /> Done</> : <>Simulate Fix</>}
                       </Button>
                       {Array.isArray(a.commands) && a.commands.length > 0 && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="btn-brand-outline rounded-lg"
-                          onClick={() => copy(a.commands.join("\n"))}
-                        >
-                          <Clipboard className="h-4 w-4 mr-1" /> Copy Commands
+                        <Button size="sm" variant="outline" className="btn-brand-outline rounded-lg" onClick={() => copy(a.commands.join("\n"))}>
+                          Copy Commands
                         </Button>
                       )}
                     </div>
@@ -238,3 +214,4 @@ export default function TriageCard({ defaultExpanded = false, onDismiss }) {
     </Card>
   );
 }
+
