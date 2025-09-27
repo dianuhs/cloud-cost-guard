@@ -1,3 +1,4 @@
+/* FULL FILE CONTENT STARTS HERE */
 import React, { useEffect, useState } from "react";
 import "./App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
@@ -7,7 +8,7 @@ import { format } from "date-fns";
 // Local brand icon
 import logo from "./assets/cloud-and-capital-icon.png";
 
-// ⬇️ NEW: Auto-Triage UI (AI/automation demo)
+// AI/automation demo card
 import TriageCard from "./components/TriageCard";
 
 // Recharts
@@ -180,10 +181,14 @@ const KPICard = ({ title, value, change, icon: Icon, subtitle, dataFreshness }) 
   <Card className="kpi-card hover:shadow-brand-md transition-all duration-200">
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
       <CardTitle className="text-sm font-medium text-brand-muted">{title}</CardTitle>
-      <div className="flex flex-col items-end">
+      <div className="flex items-center">
         <Icon className="h-4 w-4 text-brand-light-muted" />
-        {Number.isFinite(dataFreshness) && dataFreshness < 1 && <span className="text-xs text-green-600 mt-1">LIVE</span>}
-        {Number.isFinite(dataFreshness) && dataFreshness >= 1 && <span className="text-xs text-brand-light-muted mt-1">{dataFreshness}h</span>}
+        {Number.isFinite(dataFreshness) && dataFreshness < 1 && (
+          <span className="ml-1 inline-flex items-center rounded px-1.5 py-0.5 text-[10px] bg-green-50 text-green-700">LIVE</span>
+        )}
+        {Number.isFinite(dataFreshness) && dataFreshness >= 1 && (
+          <span className="ml-1 inline-flex items-center rounded px-1.5 py-0.5 text-[10px] bg-[#F2EFEA] text-brand-light-muted">{dataFreshness}h</span>
+        )}
       </div>
     </CardHeader>
     <CardContent>
@@ -732,22 +737,12 @@ ${finding.suggested_action}
 
       {/* Body */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* ⬇️ NEW: AI/Automation — Auto-Triage Cost Spike */}
-        <div className="mb-6">
-          <TriageCard />
-        </div>
 
-        {/* Data Source banner */}
-        <div className="mb-6">
-          <Alert className="bg-blue-50 border-blue-200 alert-compact">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Activity className="h-4 w-4 text-blue-600" />
-              <AlertDescription className="text-blue-800">
-                <span className="font-medium">Data Source:</span> AWS Cost &amp; Usage Reports • CloudWatch Metrics • Resource Inventory APIs
-                <span className="ml-4 text-blue-700">Last Updated: {formatTimestamp(kpis.last_updated || summary?.generated_at)}</span>
-              </AlertDescription>
-            </div>
-          </Alert>
+        {/* Data Source banner (compact caption) */}
+        <div className="mb-4 text-xs text-brand-muted flex items-center gap-3">
+          <span><span className="font-medium">Data Source:</span> AWS Cost &amp; Usage Reports • CloudWatch Metrics • Resource Inventory APIs</span>
+          <span className="hidden sm:inline">•</span>
+          <span>Last Updated: {formatTimestamp(kpis.last_updated || summary?.generated_at)}</span>
         </div>
 
         {/* KPIs */}
@@ -781,6 +776,11 @@ ${finding.suggested_action}
             subtitle="unattached volumes"
             dataFreshness={kpis.data_freshness_hours}
           />
+        </div>
+
+        {/* ⬆️ KPIs end — compact triage below for calmer first impression */}
+        <div className="mb-6">
+          <TriageCard defaultExpanded={false} />
         </div>
 
         {/* Charts */}
@@ -919,4 +919,5 @@ export default function App() {
     </div>
   );
 }
+/* FULL FILE CONTENT ENDS HERE */
 
