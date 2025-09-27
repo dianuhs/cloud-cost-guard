@@ -91,7 +91,7 @@ const getSeverityColor = (severity) => ({
   high: "severity-high",
   medium: "severity-medium",
   low: "severity-low",
-}[String(severity || "").toLowerCase()] || "severity-medium");
+}[String(severity || "").toLowerCase()] || "severity-medium";
 
 // Uniform severity icons (force size/color everywhere)
 const getSeverityIcon = (severity) => {
@@ -508,7 +508,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     loadAllData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateRange]);
 
   const normalizeMovers = (raw, productsForFallback = []) => {
@@ -569,7 +569,7 @@ const Dashboard = () => {
       ]);
 
       const sum = sumRes.data || {};
-      the const kpis = sum.kpis || {};
+      const kpis = sum.kpis || {};
       const products = Array.isArray(sum.top_products) ? sum.top_products : [];
       setSummary(sum);
       setFindings(Array.isArray(fndRes.data) ? fndRes.data : []);
