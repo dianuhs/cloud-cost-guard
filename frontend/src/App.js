@@ -1,4 +1,3 @@
-/* FULL FILE CONTENT STARTS HERE */
 import React, { useEffect, useState } from "react";
 import "./App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
@@ -14,7 +13,7 @@ import TriageCard from "./components/TriageCard";
 // Recharts
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell
+  PieChart, Pie, Cell, ReferenceLine
 } from "recharts";
 
 // UI
@@ -32,7 +31,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import {
   DollarSign, TrendingUp, TrendingDown, AlertTriangle, Server, HardDrive,
   Eye, Download, BarChart3, Activity, Target, PieChart as PieChartIcon,
-  TrendingUp as TrendingUpIcon, Calendar, CheckCircle, XCircle
+  TrendingUp as TrendingUpIcon, Calendar, CheckCircle, XCircle, X
 } from "lucide-react";
 
 /** IMPORTANT: same-origin proxy */
@@ -58,7 +57,7 @@ const formatPercent = (percent) => {
   return `${sign}${p.toFixed(1)}%`;
 };
 
-/* US date for blue “Last Updated” */
+/* US date for “Last Updated” */
 const formatTimestamp = (ts) => {
   if (!ts) return "-";
   const d = new Date(ts);
@@ -178,7 +177,7 @@ const isOrphaned = (f) => {
 
 /* -------- Presentational components -------- */
 const KPICard = ({ title, value, change, icon: Icon, subtitle, dataFreshness }) => (
-  <Card className="kpi-card hover:shadow-brand-md transition-all duration-200">
+  <Card className="kpi-card shadow-sm hover:shadow-brand-md transition-all duration-200">
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
       <CardTitle className="text-sm font-medium text-brand-muted">{title}</CardTitle>
       <div className="flex items-center">
@@ -191,7 +190,7 @@ const KPICard = ({ title, value, change, icon: Icon, subtitle, dataFreshness }) 
         )}
       </div>
     </CardHeader>
-    <CardContent>
+    <CardContent className="py-3">
       <div className="text-2xl font-bold text-brand-ink">{value}</div>
       {Number.isFinite(change) ? (
         <p className="text-xs text-brand-muted flex items-center gap-1 mt-1">
@@ -206,48 +205,52 @@ const KPICard = ({ title, value, change, icon: Icon, subtitle, dataFreshness }) 
   </Card>
 );
 
-const CostTrendChart = ({ data, height = 300, label = "Cost trends over the last 30 days" }) => (
-  <Card className="kpi-card">
-    <CardHeader>
-      <CardTitle className="flex items-center gap-2 text-brand-ink">
-        <BarChart3 className="h-5 w-5" />Daily Spend Trend
-      </CardTitle>
-      <CardDescription className="text-brand-muted">{label}</CardDescription>
-    </CardHeader>
-    <CardContent>
-      <div style={{ width: "100%", height }}>
-        <ResponsiveContainer>
-          <LineChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#E9E3DE" />
-            <XAxis dataKey="formatted_date" stroke="#7A6B5D" fontSize={12} tick={{ fill: "#7A6B5D" }} />
-            <YAxis stroke="#7A6B5D" fontSize={12} tick={{ fill: "#7A6B5D" }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
-            <Tooltip
-              contentStyle={{ backgroundColor: "#FFF", border: "1px solid #E9E3DE", borderRadius: 8, color: "#0A0A0A" }}
-              formatter={(value) => [formatCurrency(value), "Daily Cost"]}
-              labelFormatter={(label) => `Date: ${label}`}
-            />
-            <Line type="monotone" dataKey="cost" stroke="#8B6F47" strokeWidth={3} dot={{ fill: "#8B6F47", r: 4 }} activeDot={{ r: 6, fill: "#8B6F47" }} />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-    </CardContent>
-  </Card>
-);
+const CostTrendChart = ({ data, height = 300, label = "Cost trends over the last 30 days" }) => {
+  const avg = Array.isArray(data) && data.length ? data.reduce((s, d) => s + (Number(d.cost) || 0), 0) / data.length : 0;
+  return (
+    <Card className="kpi-card shadow-sm">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-brand-ink">
+          <BarChart3 className="h-5 w-5" />Daily Spend Trend
+        </CardTitle>
+        <CardDescription className="text-brand-muted">{label}</CardDescription>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <div style={{ width: "100%", height }}>
+          <ResponsiveContainer>
+            <LineChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#EEE" />
+              <XAxis dataKey="formatted_date" stroke="#7A6B5D" fontSize={12} tick={{ fill: "#7A6B5D" }} />
+              <YAxis stroke="#7A6B5D" fontSize={12} tick={{ fill: "#7A6B5D" }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+              <Tooltip
+                contentStyle={{ backgroundColor: "#FFF", border: "1px solid #E9E3DE", borderRadius: 8, color: "#0A0A0A" }}
+                formatter={(value) => [formatCurrency(value), "Daily Cost"]}
+                labelFormatter={(label) => `Date: ${label}`}
+              />
+              {avg > 0 && <ReferenceLine y={avg} stroke="#AAA" strokeDasharray="4 4" />}
+              <Line type="monotone" dataKey="cost" stroke="#8B6F47" strokeWidth={3} dot={{ fill: "#8B6F47", r: 3 }} activeDot={{ r: 5, fill: "#8B6F47" }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
-const ServiceBreakdownChart = ({ data }) => (
-  <Card className="kpi-card">
-    <CardHeader>
+const ServiceBreakdownChart = ({ data, total, rangeLabel = "30d" }) => (
+  <Card className="kpi-card shadow-sm">
+    <CardHeader className="pb-3">
       <CardTitle className="flex items-center gap-2 text-brand-ink">
         <PieChartIcon className="h-5 w-5" />Cost by Service
       </CardTitle>
       <CardDescription className="text-brand-muted">Top services by cost breakdown</CardDescription>
     </CardHeader>
-    <CardContent>
+    <CardContent className="pt-0">
       <div className="flex items-center justify-between">
-        <div style={{ width: "60%", height: 300 }}>
+        <div className="relative" style={{ width: "60%", height: 300 }}>
           <ResponsiveContainer>
             <PieChart>
-              <Pie data={data} cx="50%" cy="50%" innerRadius={60} outerRadius={120} paddingAngle={2} dataKey="value">
+              <Pie data={data} cx="50%" cy="50%" innerRadius={50} outerRadius={120} paddingAngle={2} dataKey="value">
                 {data.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
               </Pie>
               <Tooltip
@@ -256,6 +259,13 @@ const ServiceBreakdownChart = ({ data }) => (
               />
             </PieChart>
           </ResponsiveContainer>
+          {/* Center total */}
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="text-center">
+              <div className="text-xs text-brand-muted mb-1">{rangeLabel} spend</div>
+              <div className="text-sm md:text-base font-semibold text-brand-ink">{formatCurrency(total || 0)}</div>
+            </div>
+          </div>
         </div>
         <div className="w-2/5 space-y-2">
           {data.slice(0, 6).map((s, i) => (
@@ -277,15 +287,15 @@ const ServiceBreakdownChart = ({ data }) => (
 );
 
 const TopMoversCard = ({ movers, windowLabel = "7d" }) => (
-  <Card className="kpi-card">
-    <CardHeader>
+  <Card className="kpi-card shadow-sm">
+    <CardHeader className="pb-3">
       <CardTitle className="flex items-center gap-2 text-brand-ink">
         <TrendingUpIcon className="h-5 w-5" />
         Top Movers ({windowLabel})
       </CardTitle>
       <CardDescription className="text-brand-muted">Biggest cost changes in the last week</CardDescription>
     </CardHeader>
-    <CardContent>
+    <CardContent className="pt-0">
       {(!movers || movers.length === 0) ? (
         <div className="text-sm text-brand-muted">No movers detected in the last 7 days.</div>
       ) : (
@@ -321,12 +331,12 @@ const KeyInsightsCard = ({ insights }) => {
     ? format(new Date(insights.highest_single_day.dateISO), "MMM d, yyyy")
     : (insights?.highest_single_day?.date ?? "-");
   return (
-    <Card className="kpi-card">
-      <CardHeader>
+    <Card className="kpi-card shadow-sm">
+      <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-brand-ink"><Target className="h-5 w-5" />Key Insights</CardTitle>
         <CardDescription className="text-brand-muted">Important findings and projections</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-0">
         <div className="space-y-4">
           <div>
             <div className="text-sm text-brand-muted">Highest Single Day</div>
@@ -360,8 +370,33 @@ const KeyInsightsCard = ({ insights }) => {
   );
 };
 
+/* -------- Simple Modal (no extra deps) -------- */
+const Modal = ({ open, onClose, title, children }) => {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-2xl rounded-xl bg-white shadow-lg">
+        <div className="flex items-center justify-between border-b border-[#E7DCCF] px-4 py-3">
+          <h3 className="text-sm font-semibold text-brand-ink">{title}</h3>
+          <button
+            aria-label="Close"
+            onClick={onClose}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-brand-bg/80"
+          >
+            <X className="h-4 w-4 text-brand-muted" />
+          </button>
+        </div>
+        <div className="px-4 py-4">{children}</div>
+        <div className="flex justify-end gap-2 border-t border-[#E7DCCF] px-4 py-3">
+          <Button variant="outline" onClick={onClose} className="btn-brand-outline">Close</Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const FindingCard = ({ finding, onViewDetails }) => (
-  <Card className="finding-card">
+  <Card className="finding-card shadow-sm">
     <CardHeader className="pb-3">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-2">
@@ -380,7 +415,7 @@ const FindingCard = ({ finding, onViewDetails }) => (
         </div>
       </div>
     </CardHeader>
-    <CardContent>
+    <CardContent className="pt-0">
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-sm text-brand-muted">Monthly Savings</span>
@@ -467,9 +502,13 @@ const Dashboard = () => {
   const [error, setError] = useState(null);
   const [dateRange, setDateRange] = useState("30d");
 
+  // Modal
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalFinding, setModalFinding] = useState(null);
+
   useEffect(() => {
     loadAllData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateRange]);
 
   const normalizeMovers = (raw, productsForFallback = []) => {
@@ -530,7 +569,7 @@ const Dashboard = () => {
       ]);
 
       const sum = sumRes.data || {};
-      const kpis = sum.kpis || {};
+      the const kpis = sum.kpis || {};
       const products = Array.isArray(sum.top_products) ? sum.top_products : [];
       setSummary(sum);
       setFindings(Array.isArray(fndRes.data) ? fndRes.data : []);
@@ -596,44 +635,9 @@ const Dashboard = () => {
     }
   };
 
-  const handleViewDetails = (finding) => {
-    const evidence = JSON.stringify(finding.evidence, null, 2);
-    const assumptions = Array.isArray(finding.assumptions) && finding.assumptions.length
-      ? finding.assumptions.join("\n• ") : "None specified";
-    const details = `
-FINDING DETAILS
-==============
-Title: ${finding.title}
-Severity: ${String(finding.severity || "").toUpperCase()} | Confidence: ${String(finding.confidence || "").replace("_"," ").toUpperCase()}
-Monthly Savings: ${formatCurrency(finding.monthly_savings_usd_est)}
-
-IMPLEMENTATION
-=============
-Risk Level: ${finding.risk_level}
-Estimated Time: ${finding.implementation_time}
-Last Analyzed: ${formatTimestamp(finding.last_analyzed)}
-
-METHODOLOGY
-===========
-${finding.methodology || "Standard cost optimization analysis"}
-
-EVIDENCE
-========
-${evidence}
-
-ASSUMPTIONS
-===========
-• ${assumptions}
-
-RECOMMENDED COMMANDS
-===================
-${Array.isArray(finding.commands) ? finding.commands.join("\n") : "No specific commands provided"}
-
-ACTION REQUIRED
-===============
-${finding.suggested_action}
-`.trim();
-    alert(details);
+  const openFindingModal = (finding) => {
+    setModalFinding(finding);
+    setModalOpen(true);
   };
 
   const exportCSV = async () => {
@@ -693,6 +697,10 @@ ${finding.suggested_action}
   const savingsReady = positiveFindings.reduce((acc, f) => acc + toNumber(f.monthly_savings_usd_est), 0);
   const uiUnderutilized = positiveFindings.filter(isUnderUtil).length;
   const uiOrphans = positiveFindings.filter(isOrphaned).length;
+
+  const rangeLabel =
+    dateRange === "7d" ? "7d" :
+    dateRange === "90d" ? "90d" : "30d";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand-bg to-brand-light">
@@ -786,7 +794,7 @@ ${finding.suggested_action}
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <CostTrendChart data={costTrend} label={trendLabel} />
-          <ServiceBreakdownChart data={Array.isArray(serviceBreakdown.data) ? serviceBreakdown.data : []} />
+          <ServiceBreakdownChart data={Array.isArray(serviceBreakdown.data) ? serviceBreakdown.data : []} total={serviceBreakdown.total} rangeLabel={rangeLabel} />
         </div>
 
         {/* Movers & Insights */}
@@ -821,7 +829,7 @@ ${finding.suggested_action}
             </div>
 
             {displayFindings.length === 0 ? (
-              <Card className="kpi-card">
+              <Card className="kpi-card shadow-sm">
                 <CardContent className="text-center py-12">
                   <CheckCircle className="h-12 w-12 text-brand-success mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-brand-ink mb-2">All Optimized!</h3>
@@ -831,7 +839,7 @@ ${finding.suggested_action}
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {displayFindings.map((f) => (
-                  <FindingCard key={f.finding_id || `${f.title}-${f.resource_id || ""}`} finding={f} onViewDetails={handleViewDetails} />
+                  <FindingCard key={f.finding_id || `${f.title}-${f.resource_id || ""}`} finding={f} onViewDetails={openFindingModal} />
                 ))}
               </div>
             )}
@@ -841,15 +849,15 @@ ${finding.suggested_action}
           <TabsContent value="products" className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="font-brand-serif text-[18px] md:text-[20px] leading-tight font-semibold text-brand-ink tracking-tight">Product Cost Breakdown</h2>
-              <Badge className="badge-brand">Last {dateRange === "7d" ? "7" : dateRange === "30d" ? "30" : "90"} days</Badge>
+              <Badge className="badge-brand">Last {rangeLabel}</Badge>
             </div>
 
-            <Card className="kpi-card">
-              <CardHeader>
+            <Card className="kpi-card shadow-sm">
+              <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-brand-ink"><BarChart3 className="h-5 w-5" />Top Products by Cost</CardTitle>
                 <CardDescription className="text-brand-muted">Your highest spending cloud products and their week-over-week changes</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-0">
                 <ProductTable products={Array.isArray(top_products) ? top_products : []} />
               </CardContent>
             </Card>
@@ -859,12 +867,12 @@ ${finding.suggested_action}
           <TabsContent value="overview" className="space-y-6">
             <h2 className="font-brand-serif text-[18px] md:text-[20px] leading-tight font-semibold text-brand-ink tracking-tight">Cost Overview</h2>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card className="kpi-card">
-                <CardHeader>
+              <Card className="kpi-card shadow-sm">
+                <CardHeader className="pb-3">
                   <CardTitle className="text-brand-ink">Savings Potential</CardTitle>
                   <CardDescription className="text-brand-muted">Breakdown of optimization opportunities by type</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="pt-0 space-y-4">
                   {[
                     { type: "Under-utilized", count: uiUnderutilized, color: "bg-blue-500" },
                     { type: "Orphaned", count: uiOrphans, color: "bg-yellow-500" },
@@ -881,12 +889,12 @@ ${finding.suggested_action}
                 </CardContent>
               </Card>
 
-              <Card className="kpi-card">
-                <CardHeader>
+              <Card className="kpi-card shadow-sm">
+                <CardHeader className="pb-3">
                   <CardTitle className="text-brand-ink">Recent Findings</CardTitle>
                   <CardDescription className="text-brand-muted">Latest cost optimization opportunities</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-0">
                   <div className="space-y-3">
                     {(Array.isArray(recent_findings) ? recent_findings.filter(f => toNumber(f.monthly_savings_usd_est) > 0).slice(0, 5) : []).map((f, i) => (
                       <div key={i} className="flex items-center justify-between p-3 bg-brand-bg/50 rounded-lg border border-brand-line">
@@ -904,6 +912,72 @@ ${finding.suggested_action}
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Finding details modal */}
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={modalFinding?.title || "Finding Details"}
+      >
+        {modalFinding ? (
+          <div className="space-y-4 text-sm">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <div className="text-brand-muted">Severity</div>
+                <div className="font-medium">{String(modalFinding.severity || "").toUpperCase()}</div>
+              </div>
+              <div>
+                <div className="text-brand-muted">Confidence</div>
+                <div className="font-medium">{String(modalFinding.confidence || "").replace("_"," ").toUpperCase()}</div>
+              </div>
+              <div>
+                <div className="text-brand-muted">Monthly Savings</div>
+                <div className="font-semibold text-brand-success">{formatCurrency(modalFinding.monthly_savings_usd_est)}</div>
+              </div>
+              <div>
+                <div className="text-brand-muted">Risk / Time</div>
+                <div className="font-medium">{modalFinding.risk_level} {modalFinding.implementation_time ? `• ${modalFinding.implementation_time}` : ""}</div>
+              </div>
+            </div>
+
+            {modalFinding.suggested_action && (
+              <div>
+                <div className="text-brand-muted mb-1">Suggested Action</div>
+                <div className="rounded-lg border border-[#E7DCCF] bg-[#F7F1EA] p-3">{modalFinding.suggested_action}</div>
+              </div>
+            )}
+
+            {modalFinding.commands && modalFinding.commands.length > 0 && (
+              <div>
+                <div className="text-brand-muted mb-1">Recommended Command</div>
+                <pre className="rounded-lg border border-[#E7DCCF] bg-[#FFF] p-3 text-xs overflow-auto">{pickBestCommand(modalFinding)}</pre>
+              </div>
+            )}
+
+            {modalFinding.evidence && (
+              <div>
+                <div className="text-brand-muted mb-1">Evidence</div>
+                <pre className="rounded-lg border border-[#E7DCCF] bg-[#FFF] p-3 text-xs overflow-auto">{JSON.stringify(modalFinding.evidence, null, 2)}</pre>
+              </div>
+            )}
+
+            {modalFinding.methodology && (
+              <div>
+                <div className="text-brand-muted mb-1">Methodology</div>
+                <div className="rounded-lg border border-[#E7DCCF] bg-[#FFF] p-3 whitespace-pre-wrap">{modalFinding.methodology}</div>
+              </div>
+            )}
+
+            {modalFinding.last_analyzed && (
+              <div className="text-xs text-brand-muted">
+                Last Analyzed: {formatTimestamp(modalFinding.last_analyzed)}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div>No finding selected.</div>
+        )}
+      </Modal>
     </div>
   );
 };
@@ -919,5 +993,3 @@ export default function App() {
     </div>
   );
 }
-/* FULL FILE CONTENT ENDS HERE */
-
