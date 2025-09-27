@@ -259,7 +259,6 @@ const ServiceBreakdownChart = ({ data, total, rangeLabel = "30d" }) => (
               />
             </PieChart>
           </ResponsiveContainer>
-          {/* Center total */}
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <div className="text-center">
               <div className="text-xs text-brand-muted mb-1">{rangeLabel} spend</div>
@@ -303,7 +302,6 @@ const TopMoversCard = ({ movers, windowLabel = "7d" }) => (
           {movers.slice(0, 6).map((m, i) => (
             <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-brand-bg/30">
               <div className="flex items-center gap-3">
-                {/* Green is good (down); Red is up */}
                 <div className={`w-2 h-8 rounded ${toNumber(m.change_amount) >= 0 ? "bg-red-500" : "bg-green-500"}`} />
                 <div>
                   <div className="font-medium text-brand-ink text-sm">{m.service}</div>
@@ -630,8 +628,8 @@ const Dashboard = () => {
     } catch (err) {
       console.error("Error loading data:", err);
       setError("Failed to load cost data. Please try again.");
-    } finally:
-      setLoading(false)
+    } finally {
+      setLoading(false);
     }
   };
 
