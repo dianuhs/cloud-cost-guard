@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "./ui/
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Separator } from "./ui/separator";
-import { AlertTriangle, Loader2, ChevronDown, ChevronUp, Clipboard, Play, CheckCircle, X } from "lucide-react";
+import { AlertTriangle, Loader2, CheckCircle, X } from "lucide-react";
 
 const fmt = (n) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -214,4 +214,3 @@ export default function TriageCard({ defaultExpanded = false, onDismiss }) {
     </Card>
   );
 }
-
