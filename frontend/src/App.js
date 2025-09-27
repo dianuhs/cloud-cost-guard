@@ -91,7 +91,7 @@ const getSeverityColor = (severity) => ({
   high: "severity-high",
   medium: "severity-medium",
   low: "severity-low",
-}[String(severity || "").toLowerCase()] || "severity-medium";
+}[String(severity || "").toLowerCase()] || "severity-medium");
 
 // Uniform severity icons (force size/color everywhere)
 const getSeverityIcon = (severity) => {
