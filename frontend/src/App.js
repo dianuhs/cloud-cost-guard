@@ -259,11 +259,6 @@ const ServiceBreakdownChart = ({ data, total, rangeLabel = "30d" }) => (
               />
             </PieChart>
           </ResponsiveContainer>
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className="text-center">
-              <div className="text-xs text-brand-muted mb-1">{rangeLabel} spend</div>
-              <div className="text-sm md:text-base font-semibold text-brand-ink">{formatCurrency(total || 0)}</div>
-            </div>
           </div>
         </div>
         <div className="w-2/5 space-y-2">
