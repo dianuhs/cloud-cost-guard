@@ -1,0 +1,79 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-02-09T02:02:23Z",
+  "window": {
+    "label": "Last 30 days",
+    "start": "2026-01-09",
+    "end": "2026-02-08"
+  },
+  "cost_baseline": {
+    "source": "finops-lite",
+    "currency": "USD",
+    "period_days": 30,
+    "window_start": "2026-01-09",
+    "window_end": "2026-02-08",
+    "total_cost": 0.0,
+    "daily_average": 0.0,
+    "trend": {
+      "direction": "stable",
+      "change_percentage": 0.0,
+      "change_amount": 0.0,
+      "current_period_cost": 0.0,
+      "previous_period_cost": 0.0
+    },
+    "top_services": [
+      {
+        "service_name": "AWS Cost Explorer",
+        "total_cost": 0.0,
+        "percentage_of_total": 0.0,
+        "daily_average": 0.0
+      }
+    ],
+    "cost_status": {
+      "has_data": false,
+      "reason": "No billable AWS usage found in selected window or Cost Explorer permissions missing"
+    },
+    "raw": {
+      "finops_lite_report": {
+        "...": "full raw payload here"
+      }
+    }
+  },
+  "anomalies": {
+    "total_anomalies": 3,
+    "by_severity": {
+      "critical": 1,
+      "high": 1,
+      "medium": 1
+    },
+    "max_delta_pct": 220.0,
+    "recent": [
+      {
+        "timestamp": "2026-01-11T00:00:00Z",
+        "group": "AmazonEC2",
+        "baseline": 100.0,
+        "current": 320.0,
+        "delta": 220.0,
+        "delta_pct": 220.0,
+        "severity": "critical",
+        "anomaly_type": "spend_above_threshold"
+      }
+    ]
+  },
+  "resilience": {
+    "total_workloads": 2,
+    "total_monthly_storage_cost": 99.0,
+    "total_monthly_restore_cost": 1.5,
+    "total_monthly_resilience_cost": 100.5,
+    "top_workloads": [
+      {
+        "workload": "billing-db",
+        "total_monthly_resilience_cost": 76.0
+      },
+      {
+        "workload": "orders-api",
+        "total_monthly_resilience_cost": 24.5
+      }
+    ]
+  }
+}

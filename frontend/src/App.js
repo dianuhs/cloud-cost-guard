@@ -3,6 +3,7 @@ import "./App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import axios from "axios";
 import { format } from "date-fns";
+import { getCloudCapitalReport } from "./lib/report";
 
 // Local brand icon
 import logo from "./assets/cloud-and-capital-icon.png";
@@ -29,7 +30,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 
 // Icons
 import {
-  DollarSign, TrendingUp, TrendingDown, AlertTriangle, Server, HardDrive,
+  DollarSign, TrendingUp, TrendingDown, AlertTriangle, HardDrive,
   Eye, Download, BarChart3, Activity, Target, PieChart as PieChartIcon,
   TrendingUp as TrendingUpIcon, Calendar, CheckCircle, XCircle, X
 } from "lucide-react";
@@ -71,6 +72,15 @@ const formatTimestamp = (ts) => {
   const hh = String(h).padStart(2, "0");
   const min = String(d.getMinutes()).padStart(2, "0");
   return `${mm}/${dd}/${yyyy} ${hh}:${min} ${ampm}`;
+};
+
+const getDataFreshnessHours = (ts) => {
+  if (!ts) return null;
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return null;
+  const diffMs = Date.now() - d.getTime();
+  if (!Number.isFinite(diffMs) || diffMs < 0) return null;
+  return Math.round(diffMs / 36e5);
 };
 
 const getConfidenceColor = (confidence) => ({
@@ -287,11 +297,11 @@ const TopMoversCard = ({ movers, windowLabel = "7d" }) => (
         <TrendingUpIcon className="h-5 w-5" />
         Top Movers ({windowLabel})
       </CardTitle>
-      <CardDescription className="text-brand-muted">Biggest cost changes in the last week</CardDescription>
+      <CardDescription className="text-brand-muted">Biggest cost changes in {windowLabel}</CardDescription>
     </CardHeader>
     <CardContent className="pt-0">
       {(!movers || movers.length === 0) ? (
-        <div className="text-sm text-brand-muted">No movers detected in the last 7 days.</div>
+        <div className="text-sm text-brand-muted">No movers detected in {windowLabel}.</div>
       ) : (
         <div className="space-y-3">
           {movers.slice(0, 6).map((m, i) => (
@@ -496,6 +506,16 @@ const Dashboard = () => {
   const [error, setError] = useState(null);
   const [dateRange, setDateRange] = useState("30d");
 
+  const report = getCloudCapitalReport();
+  const costBaseline = report?.cost_baseline || {};
+  const anomalies = report?.anomalies || {};
+  const resilience = report?.resilience || {};
+  const reportWindowLabel = report?.window?.label || "Last 30 days";
+  const reportWindowRange = (report?.window?.start && report?.window?.end)
+    ? `${report.window.start} to ${report.window.end}`
+    : reportWindowLabel;
+  const hasCostData = costBaseline?.cost_status?.has_data !== false;
+
   // Modal
   const [modalOpen, setModalOpen] = useState(false);
   const [modalFinding, setModalFinding] = useState(null);
@@ -556,20 +576,54 @@ const Dashboard = () => {
       setLoading(true);
       setError(null);
 
-      const [sumRes, fndRes, mvRes] = await Promise.all([
-        axios.get(`${API}/summary?window=${dateRange}`),
-        axios.get(`${API}/findings?sort=savings&limit=50`),
-        axios.get(`${API}/movers?window=7d`)
-      ]);
+      const totalCost = hasCostData ? toNumber(costBaseline.total_cost) : 0;
+      const dailyAverage = hasCostData ? toNumber(costBaseline.daily_average) : 0;
+      const trendPct = hasCostData ? toNumber(costBaseline?.trend?.change_percentage) : null;
+      const dataFreshnessHours = getDataFreshnessHours(report?.generated_at);
 
-      const sum = sumRes.data || {};
-      const kpis = sum.kpis || {};
-      const products = Array.isArray(sum.top_products) ? sum.top_products : [];
-      setSummary(sum);
-      setFindings(Array.isArray(fndRes.data) ? fndRes.data : []);
+      const topServices = Array.isArray(costBaseline.top_services) ? costBaseline.top_services : [];
+      const products = topServices.map((svc) => ({
+        product: svc.service_name || "—",
+        amount_usd: toNumber(svc.total_cost),
+        percent_of_total: toNumber(svc.percentage_of_total),
+        wow_delta: 0
+      }));
 
-      const moversNorm = normalizeMovers(mvRes.data, products);
-      setTopMovers(moversNorm);
+      const resilienceWorkloads = Array.isArray(resilience.top_workloads) ? resilience.top_workloads : [];
+      const recentFindings = [...resilienceWorkloads]
+        .sort((a, b) => toNumber(b.total_monthly_resilience_cost) - toNumber(a.total_monthly_resilience_cost))
+        .map((w, idx) => ({
+          finding_id: `resilience-${w.workload || idx}`,
+          title: w.workload || "—",
+          severity: idx === 0 ? "high" : idx === 1 ? "medium" : "low",
+          monthly_savings_usd_est: toNumber(w.total_monthly_resilience_cost)
+        }));
+
+      setSummary({
+        generated_at: report?.generated_at,
+        kpis: {
+          total_30d_cost: totalCost,
+          wow_percent: trendPct,
+          data_freshness_hours: dataFreshnessHours,
+          last_updated: report?.generated_at
+        },
+        top_products: products,
+        recent_findings: recentFindings
+      });
+
+      // Findings are not included in the unified report yet.
+      setFindings([]);
+
+      // Anomalies -> movers
+      const moversSeed = Array.isArray(anomalies.recent) ? anomalies.recent : [];
+      const movers = moversSeed.map((m) => ({
+        service: m.group || m.service || "—",
+        previous_cost: toNumber(m.baseline),
+        current_cost: toNumber(m.current),
+        change_amount: toNumber(m.delta),
+        change_percent: toNumber(m.delta_pct)
+      }));
+      setTopMovers(movers);
 
       // Service Breakdown
       const total = products.reduce((acc, p) => acc + toNumber(p.amount_usd || p.amount || 0), 0);
@@ -586,24 +640,16 @@ const Dashboard = () => {
       setServiceBreakdown({ data: breakdown, total });
 
       // Daily Spend Trend
-      let series = [];
-      const daily = Array.isArray(sum.daily_series) ? sum.daily_series : [];
-      if (daily.length) {
-        series = daily.map((pt) => {
-          const d = new Date(pt.date || pt.day || pt.dateISO || pt.ds || Date.now());
-          return { formatted_date: format(d, "MM/dd"), cost: toNumber(pt.cost || pt.amount || pt.usd || pt.value) };
-        });
-      } else {
-        const days = dateRange === "7d" ? 7 : dateRange === "90d" ? 90 : 30;
-        const avg = total && days ? total / days : (kpis.total_30d_cost || 0) / Math.max(days,1);
-        series = Array.from({ length: days }, (_, i) => {
-          const d = new Date();
-          d.setDate(d.getDate() - (days - 1 - i));
-          const jitter = avg * 0.06 * Math.sin(i / 2.7) + (avg * 0.03 * (Math.random() - 0.5));
-          const amount = Math.max(0, avg + jitter);
-          return { formatted_date: format(d, "MM/dd"), dateISO: d.toISOString().slice(0,10), cost: amount };
-        });
-      }
+      const days = Math.max(1, toNumber(costBaseline.period_days) || 30);
+      const endDate = report?.window?.end ? new Date(report.window.end) : new Date();
+      const avg = dailyAverage || (total && days ? total / days : 0);
+      const series = Array.from({ length: days }, (_, i) => {
+        const d = new Date(endDate);
+        d.setDate(d.getDate() - (days - 1 - i));
+        const jitter = avg * 0.06 * Math.sin(i / 2.7) + (avg * 0.03 * (Math.random() - 0.5));
+        const amount = Math.max(0, avg + jitter);
+        return { formatted_date: format(d, "MM/dd"), dateISO: d.toISOString().slice(0,10), cost: amount };
+      });
       setCostTrend(series);
 
       // Key Insights
@@ -679,22 +725,24 @@ const Dashboard = () => {
     );
   }
 
-  const { kpis = {}, top_products = [], recent_findings = [] } = summary || {};
-  const trendLabel =
-    dateRange === "30d" ? "Cost trends over the last 30 days" :
-    dateRange === "7d"  ? "Cost trends over the last 7 days"  :
-                          "Cost trends over the last 90 days";
+  const { top_products = [], recent_findings = [] } = summary || {};
+  const totalCost = hasCostData ? toNumber(costBaseline.total_cost) : 0;
+  const dailyAverage = hasCostData ? toNumber(costBaseline.daily_average) : 0;
+  const trendPercent = hasCostData ? toNumber(costBaseline?.trend?.change_percentage) : null;
+  const totalAnomalies = toNumber(anomalies.total_anomalies);
+  const maxDeltaPct = toNumber(anomalies.max_delta_pct);
+  const severityCounts = anomalies.by_severity || {};
+  const criticalCount = toNumber(severityCounts.critical);
+  const highCount = toNumber(severityCounts.high);
+  const mediumCount = toNumber(severityCounts.medium);
+  const resilienceMonthly = toNumber(resilience.total_monthly_resilience_cost);
+  const resilienceWorkloads = toNumber(resilience.total_workloads);
+  const dataFreshnessHours = getDataFreshnessHours(report?.generated_at);
+  const trendLabel = reportWindowLabel ? `Cost trends over ${reportWindowLabel}` : "Cost trends over the last 30 days";
 
   // Filter to savings-impact findings and recompute UI-facing metrics
   const positiveFindings = (Array.isArray(findings) ? findings : []).filter(f => toNumber(f.monthly_savings_usd_est) > 0);
   const displayFindings = sortAndPickFindings(positiveFindings, 9);
-  const savingsReady = positiveFindings.reduce((acc, f) => acc + toNumber(f.monthly_savings_usd_est), 0);
-  const uiUnderutilized = positiveFindings.filter(isUnderUtil).length;
-  const uiOrphans = positiveFindings.filter(isOrphaned).length;
-
-  const rangeLabel =
-    dateRange === "7d" ? "7d" :
-    dateRange === "90d" ? "90d" : "30d";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand-bg to-brand-light">
@@ -744,39 +792,39 @@ const Dashboard = () => {
         <div className="mb-4 text-xs text-brand-muted flex items-center gap-3">
           <span><span className="font-medium">Data Source:</span> AWS Cost &amp; Usage Reports • CloudWatch Metrics • Resource Inventory APIs</span>
           <span className="hidden sm:inline">•</span>
-          <span>Last Updated: {formatTimestamp(kpis.last_updated || summary?.generated_at)}</span>
+          <span>Last Updated: {formatTimestamp(report?.generated_at)}</span>
         </div>
 
         {/* KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <KPICard
-            title={dateRange === "30d" ? "Total 30d Cost" : `Total ${dateRange} Cost`}
-            value={formatCurrency(kpis.total_30d_cost)}
-            change={kpis.wow_percent}
+            title={`Total Cost (${reportWindowLabel})`}
+            value={formatCurrency(totalCost)}
+            change={hasCostData ? trendPercent : null}
             icon={DollarSign}
-            subtitle="vs last period"
-            dataFreshness={kpis.data_freshness_hours}
+            subtitle={hasCostData ? "vs last period" : "no usage data"}
+            dataFreshness={dataFreshnessHours}
           />
           <KPICard
-            title="Savings Ready"
-            value={formatCurrency(savingsReady)}
+            title="Avg Daily Cost"
+            value={formatCurrency(dailyAverage)}
             icon={TrendingDown}
-            subtitle="potential monthly savings"
-            dataFreshness={kpis.data_freshness_hours}
+            subtitle={hasCostData ? reportWindowRange : "no usage data"}
+            dataFreshness={dataFreshnessHours}
           />
           <KPICard
-            title="Under-utilized"
-            value={uiUnderutilized}
-            icon={Server}
-            subtitle="compute resources"
-            dataFreshness={kpis.data_freshness_hours}
+            title="Total Anomalies"
+            value={totalAnomalies}
+            icon={AlertTriangle}
+            subtitle={Number.isFinite(maxDeltaPct) ? `max delta ${maxDeltaPct.toFixed(1)}%` : reportWindowLabel}
+            dataFreshness={dataFreshnessHours}
           />
           <KPICard
-            title="Orphaned Resources"
-            value={uiOrphans}
+            title="Monthly Resilience Cost"
+            value={formatCurrency(resilienceMonthly)}
             icon={HardDrive}
-            subtitle="unattached volumes"
-            dataFreshness={kpis.data_freshness_hours}
+            subtitle={`${resilienceWorkloads} workloads`}
+            dataFreshness={dataFreshnessHours}
           />
         </div>
 
@@ -788,12 +836,12 @@ const Dashboard = () => {
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <CostTrendChart data={costTrend} label={trendLabel} />
-          <ServiceBreakdownChart data={Array.isArray(serviceBreakdown.data) ? serviceBreakdown.data : []} total={serviceBreakdown.total} rangeLabel={rangeLabel} />
+          <ServiceBreakdownChart data={Array.isArray(serviceBreakdown.data) ? serviceBreakdown.data : []} total={serviceBreakdown.total} rangeLabel={reportWindowLabel} />
         </div>
 
         {/* Movers & Insights */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <TopMoversCard movers={topMovers} windowLabel="7d" />
+          <TopMoversCard movers={topMovers} windowLabel={reportWindowLabel} />
           <KeyInsightsCard insights={keyInsights} />
         </div>
 
@@ -818,7 +866,7 @@ const Dashboard = () => {
                 Cost Optimization Findings
               </h2>
               <Badge className="badge-brand text-brand-success border-brand-success/20">
-                {formatCurrency(savingsReady)}/month potential
+                {totalAnomalies} anomalies detected
               </Badge>
             </div>
 
@@ -843,7 +891,7 @@ const Dashboard = () => {
           <TabsContent value="products" className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="font-brand-serif text-[18px] md:text-[20px] leading-tight font-semibold text-brand-ink tracking-tight">Product Cost Breakdown</h2>
-              <Badge className="badge-brand">Last {rangeLabel}</Badge>
+              <Badge className="badge-brand">{reportWindowLabel}</Badge>
             </div>
 
             <Card className="kpi-card shadow-sm">
@@ -863,14 +911,14 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card className="kpi-card shadow-sm">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-brand-ink">Savings Potential</CardTitle>
-                  <CardDescription className="text-brand-muted">Breakdown of optimization opportunities by type</CardDescription>
+                  <CardTitle className="text-brand-ink">Anomaly Severity</CardTitle>
+                  <CardDescription className="text-brand-muted">Recent anomaly counts by severity</CardDescription>
                 </CardHeader>
                 <CardContent className="pt-0 space-y-4">
                   {[
-                    { type: "Under-utilized", count: uiUnderutilized, color: "bg-blue-500" },
-                    { type: "Orphaned", count: uiOrphans, color: "bg-yellow-500" },
-                    { type: "Idle", count: Array.isArray(findings) ? findings.filter(f => String(f.title).toLowerCase().includes("idle")).length : 0, color: "bg-red-500" }
+                    { type: "Critical", count: criticalCount, color: "bg-blue-500" },
+                    { type: "High", count: highCount, color: "bg-yellow-500" },
+                    { type: "Medium", count: mediumCount, color: "bg-red-500" }
                   ].map((it, i) => (
                     <div key={i} className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -885,8 +933,8 @@ const Dashboard = () => {
 
               <Card className="kpi-card shadow-sm">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-brand-ink">Recent Findings</CardTitle>
-                  <CardDescription className="text-brand-muted">Latest cost optimization opportunities</CardDescription>
+                  <CardTitle className="text-brand-ink">Resilience Workloads</CardTitle>
+                  <CardDescription className="text-brand-muted">Top workloads by monthly resilience cost</CardDescription>
                 </CardHeader>
                 <CardContent className="pt-0">
                   <div className="space-y-3">
