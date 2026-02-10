@@ -518,6 +518,7 @@ const Dashboard = () => {
       }));
 
       const resilienceWorkloads = Array.isArray(resilience.top_workloads) ? resilience.top_workloads : [];
+      const moversSeed = Array.isArray(anomalies.recent) ? anomalies.recent : [];
       const recentFindings = [...resilienceWorkloads]
         .sort((a, b) => toNumber(b.total_monthly_resilience_cost) - toNumber(a.total_monthly_resilience_cost))
         .map((w, idx) => ({
@@ -539,11 +540,69 @@ const Dashboard = () => {
         recent_findings: recentFindings
       });
 
-      // Findings are not included in the unified report yet.
-      setFindings([]);
+      // Demo findings are derived directly from unified report sections:
+      // anomalies.recent + resilience.top_workloads.
+      const anomalyFindings = moversSeed.map((item, idx) => {
+        const group = item.group || "Cloud Service";
+        const severity = String(item.severity || "medium").toLowerCase();
+        const normalizedSeverity = ["critical", "high", "medium", "low"].includes(severity) ? severity : "medium";
+        const anomalyDelta = Math.max(0, toNumber(item.delta));
+        const monthlySavingsEstimate = Number((anomalyDelta * 6).toFixed(2));
+        return {
+          finding_id: `anomaly-${idx}-${String(group).toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+          title: `${group} spend anomaly above baseline`,
+          type: "anomaly",
+          severity: normalizedSeverity,
+          confidence: normalizedSeverity === "critical" || normalizedSeverity === "high" ? "high" : "medium",
+          monthly_savings_usd_est: monthlySavingsEstimate,
+          risk_level: normalizedSeverity === "critical" ? "High" : "Medium",
+          implementation_time: "1-3 hours",
+          suggested_action: `Investigate ${group} usage growth, validate workload changes, and apply scaling or budget guardrails to reduce repeat spikes.`,
+          commands: [
+            `aws ce get-cost-and-usage --time-period Start=${String(item.timestamp || "").slice(0, 10)},End=${String(item.timestamp || "").slice(0, 10)} --granularity DAILY --metrics BlendedCost --group-by Type=DIMENSION,Key=SERVICE`
+          ],
+          last_analyzed: item.timestamp || report?.generated_at,
+          evidence: {
+            service: group,
+            baseline: toNumber(item.baseline),
+            current: toNumber(item.current),
+            delta_usd: anomalyDelta,
+            delta_pct: toNumber(item.delta_pct)
+          },
+          methodology: "Derived from report.anomalies.recent to provide demo optimization actions."
+        };
+      });
+
+      const resilienceDerivedFindings = resilienceWorkloads.slice(0, 2).map((workload, idx) => {
+        const workloadName = workload.workload || `workload-${idx + 1}`;
+        const resilienceCost = toNumber(workload.total_monthly_resilience_cost);
+        const monthlySavingsEstimate = Number((resilienceCost * 0.22).toFixed(2));
+        return {
+          finding_id: `resilience-finding-${idx}-${String(workloadName).toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+          title: `Optimize resilience policy for ${workloadName}`,
+          type: "resilience",
+          severity: idx === 0 ? "high" : "medium",
+          confidence: "medium",
+          monthly_savings_usd_est: monthlySavingsEstimate,
+          risk_level: "Medium",
+          implementation_time: "2-4 hours",
+          suggested_action: `Review retention, backup frequency, and storage tiering for ${workloadName} while preserving required recovery objectives.`,
+          commands: [
+            `# Review backup retention and restore policy for ${workloadName}`
+          ],
+          last_analyzed: report?.generated_at,
+          evidence: {
+            workload: workloadName,
+            monthly_resilience_cost: resilienceCost
+          },
+          methodology: "Derived from report.resilience.top_workloads to surface resilience cost opportunities."
+        };
+      });
+
+      const demoFindings = [...anomalyFindings, ...resilienceDerivedFindings].slice(0, 6);
+      setFindings(demoFindings);
 
       // Anomalies -> movers
-      const moversSeed = Array.isArray(anomalies.recent) ? anomalies.recent : [];
       const movers = moversSeed.map((m) => ({
         service: m.group || m.service || "—",
         previous_cost: toNumber(m.baseline),
