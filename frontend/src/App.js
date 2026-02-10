@@ -159,32 +159,6 @@ const sortAndPickFindings = (arr, limit = 9) => {
     .slice(0, limit);
 };
 
-/* -------- Classifiers for KPI alignment -------- */
-const isUnderUtil = (f) => {
-  const t = String(f.type || "").toLowerCase();
-  const title = String(f.title || "").toLowerCase();
-  return (
-    t.includes("under") ||
-    t.includes("idle") ||
-    title.includes("under-util") ||
-    title.includes("underutil") ||
-    (title.includes("cpu") && title.includes("util"))
-  );
-};
-
-const isOrphaned = (f) => {
-  const t = String(f.type || "").toLowerCase();
-  const title = String(f.title || "").toLowerCase();
-  return (
-    t.includes("orphan") ||
-    title.includes("unattached") ||
-    title.includes("unused elastic ip") ||
-    (title.includes("elastic ip") && title.includes("unused")) ||
-    title.includes("unused eip") ||
-    title.includes("orphan")
-  );
-};
-
 /* -------- Presentational components -------- */
 const KPICard = ({ title, value, change, icon: Icon, subtitle, dataFreshness }) => (
   <Card className="kpi-card shadow-sm hover:shadow-brand-md transition-all duration-200">
@@ -524,52 +498,6 @@ const Dashboard = () => {
     loadAllData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateRange]);
-
-  const normalizeMovers = (raw, productsForFallback = []) => {
-    let arr = raw;
-    if (arr && !Array.isArray(arr)) {
-      if (Array.isArray(arr.data)) arr = arr.data;
-      else if (Array.isArray(arr.movers)) arr = arr.movers;
-      else if (Array.isArray(arr.top_movers)) arr = arr.top_movers;
-      else arr = [];
-    }
-    if (!Array.isArray(arr)) arr = [];
-
-    let out = arr.map((m) => ({
-      service: m.service || m.name || m.product || "—",
-      previous_cost: toNumber(m.previous_cost ?? m.prev_usd ?? m.prev_amount),
-      current_cost: toNumber(m.current_cost ?? m.current_usd ?? m.curr_amount ?? m.amount_usd),
-      change_amount: toNumber(m.change_amount ?? m.change_usd ?? m.delta_usd ?? (toNumber(m.current_cost ?? 0) - toNumber(m.previous_cost ?? 0))),
-      change_percent: toNumber(m.change_percent ?? m.change_pct ?? m.delta_pct ?? (
-        toNumber(m.previous_cost) > 0 ? ((toNumber(m.current_cost) - toNumber(m.previous_cost)) / toNumber(m.previous_cost)) * 100 : 0
-      )),
-    })).filter((m) => m.service && (m.previous_cost || m.current_cost || m.change_amount));
-
-    if (out.length > 0) return out;
-
-    if (productsForFallback && productsForFallback.length) {
-      const synth = productsForFallback
-        .filter((p) => Number.isFinite(toNumber(p.wow_delta)))
-        .map((p) => {
-          const current = toNumber(p.amount_usd || p.amount || 0);
-          const delta = toNumber(p.wow_delta);
-          const previous = current - delta;
-          const pct = previous !== 0 ? (delta / previous) * 100 : (current > 0 ? 100 : 0);
-          return {
-            service: p.product || p.name || p.service || "—",
-            previous_cost: previous,
-            current_cost: current,
-            change_amount: delta,
-            change_percent: pct,
-          };
-        })
-        .sort((a, b) => Math.abs(b.change_amount) - Math.abs(a.change_amount))
-        .slice(0, 6);
-      return synth;
-    }
-
-    return out;
-  };
 
   const loadAllData = async () => {
     try {
