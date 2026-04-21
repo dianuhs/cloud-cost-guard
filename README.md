@@ -1,5 +1,7 @@
 # Cloud Cost Guard
 
+[![CI](https://github.com/dianuhs/cloud-cost-guard/actions/workflows/test.yml/badge.svg)](https://github.com/dianuhs/cloud-cost-guard/actions/workflows/test.yml)
+
 **Part of the Visibility → Variance → Tradeoffs pipeline.**
 
 | Tool | Role | Repo |
