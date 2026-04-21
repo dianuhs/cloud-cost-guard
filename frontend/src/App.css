@@ -181,7 +181,7 @@ h1{ font-weight:600; } h2{ font-weight:600; }
 /* -------------------------------------------------- */
 .ccg-tabs{
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   height: 38px;
   align-items: center;
   gap: 6px;

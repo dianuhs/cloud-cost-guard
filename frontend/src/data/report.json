@@ -99,5 +99,44 @@
         "total_monthly_resilience_cost": 467.6
       }
     ]
+  },
+  "ai_spend": {
+    "total_cost": 892.40,
+    "daily_average": 29.75,
+    "trend": {
+      "direction": "up",
+      "change_percentage": 12.4,
+      "change_amount": 98.60
+    },
+    "models": [
+      { "model": "gpt-4o",              "provider": "openai",    "cost": 512.30 },
+      { "model": "claude-sonnet-4-6",   "provider": "anthropic", "cost": 280.10 },
+      { "model": "amazon.titan-lite",   "provider": "bedrock",   "cost": 62.40  },
+      { "model": "gpt-4o-mini",         "provider": "openai",    "cost": 21.80  },
+      { "model": "amazon.nova-pro",     "provider": "bedrock",   "cost": 15.80  }
+    ]
+  },
+  "saas_spend": {
+    "total_cost": 1580.00,
+    "trend": {
+      "direction": "up",
+      "change_percentage": 3.2,
+      "change_amount": 48.80
+    },
+    "total_unused_licenses": 19,
+    "estimated_waste": 241.50,
+    "tools": [
+      { "tool": "Salesforce", "cost": 600.00, "seats_licensed": 10, "seats_active": 8,  "unused": 2 },
+      { "tool": "Slack",      "cost": 437.50, "seats_licensed": 50, "seats_active": 42, "unused": 8 },
+      { "tool": "Snowflake",  "cost": 320.00, "seats_licensed": 0,  "seats_active": 0,  "unused": 0 },
+      { "tool": "GitHub",     "cost": 126.50, "seats_licensed": 25, "seats_active": 18, "unused": 7 },
+      { "tool": "Notion",     "cost":  96.00, "seats_licensed": 12, "seats_active": 10, "unused": 2 }
+    ],
+    "monthly_trend": [
+      { "month": "Nov", "cost": 1490.40 },
+      { "month": "Dec", "cost": 1521.80 },
+      { "month": "Jan", "cost": 1531.20 },
+      { "month": "Feb", "cost": 1580.00 }
+    ]
   }
 }

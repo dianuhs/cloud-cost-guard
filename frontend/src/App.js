@@ -13,7 +13,7 @@ import TriageCard from "./components/TriageCard";
 
 // Recharts
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, ReferenceLine
 } from "recharts";
 
@@ -32,7 +32,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import {
   DollarSign, TrendingUp, TrendingDown, AlertTriangle, HardDrive,
   Eye, Download, BarChart3, Activity, Target, PieChart as PieChartIcon,
-  TrendingUp as TrendingUpIcon, Calendar, CheckCircle, XCircle, X
+  TrendingUp as TrendingUpIcon, Calendar, CheckCircle, XCircle, X,
+  Bot, Layers
 } from "lucide-react";
 
 /** IMPORTANT: same-origin proxy */
@@ -468,6 +469,149 @@ const ProductTable = ({ products }) => (
   </div>
 );
 
+const AiModelBreakdown = ({ models }) => (
+  <Card className="kpi-card shadow-sm">
+    <CardHeader className="pb-3">
+      <CardTitle className="flex items-center gap-2 text-brand-ink">
+        <PieChartIcon className="h-5 w-5" />Cost by Model
+      </CardTitle>
+      <CardDescription className="text-brand-muted">AI model spend breakdown this period</CardDescription>
+    </CardHeader>
+    <CardContent className="pt-0">
+      <div className="flex items-center justify-between">
+        <div style={{ width: "55%", height: 260 }}>
+          <ResponsiveContainer>
+            <PieChart>
+              <Pie data={models} cx="50%" cy="50%" innerRadius={45} outerRadius={105} paddingAngle={2} dataKey="value">
+                {models.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+              </Pie>
+              <Tooltip
+                contentStyle={{ backgroundColor: "#FFF", border: "1px solid #E9E3DE", borderRadius: 8, color: "#0A0A0A" }}
+                formatter={(val, _n, props) => [formatCurrency(val), `${props.payload.name} (${props.payload.percentage}%)`]}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="w-2/5 space-y-2">
+          {models.map((m, i) => (
+            <div key={i} className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: m.fill }} />
+                <span className="text-brand-ink text-xs truncate" style={{ maxWidth: "7rem" }}>{m.name}</span>
+              </div>
+              <div className="text-right flex-shrink-0 ml-2">
+                <div className="font-semibold text-brand-ink text-xs">{formatCurrency(m.value)}</div>
+                <div className="text-xs text-brand-muted">{m.percentage}%</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+);
+
+const SaasToolChart = ({ tools }) => {
+  const data = tools.map(t => ({ name: t.tool, cost: toNumber(t.cost) }));
+  return (
+    <Card className="kpi-card shadow-sm">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-brand-ink">
+          <BarChart3 className="h-5 w-5" />Cost by Tool
+        </CardTitle>
+        <CardDescription className="text-brand-muted">Monthly SaaS spend per product</CardDescription>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <div style={{ width: "100%", height: 280 }}>
+          <ResponsiveContainer>
+            <BarChart data={data} layout="vertical" margin={{ left: 8, right: 24, top: 4, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#EEE" horizontal={false} />
+              <XAxis type="number" stroke="#7A6B5D" fontSize={11} tick={{ fill: "#7A6B5D" }}
+                tickFormatter={(v) => `$${v >= 1000 ? (v / 1000).toFixed(0) + "k" : v}`} />
+              <YAxis type="category" dataKey="name" stroke="#7A6B5D" fontSize={12} tick={{ fill: "#7A6B5D" }} width={72} />
+              <Tooltip
+                contentStyle={{ backgroundColor: "#FFF", border: "1px solid #E9E3DE", borderRadius: 8, color: "#0A0A0A" }}
+                formatter={(value) => [formatCurrency(value), "Monthly Cost"]}
+              />
+              <Bar dataKey="cost" fill="#8B6F47" radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+const SaasMonthlyChart = ({ data }) => (
+  <Card className="kpi-card shadow-sm">
+    <CardHeader className="pb-3">
+      <CardTitle className="flex items-center gap-2 text-brand-ink">
+        <TrendingUpIcon className="h-5 w-5" />Month-over-Month Trend
+      </CardTitle>
+      <CardDescription className="text-brand-muted">SaaS spend over the last 4 months</CardDescription>
+    </CardHeader>
+    <CardContent className="pt-0">
+      <div style={{ width: "100%", height: 280 }}>
+        <ResponsiveContainer>
+          <LineChart data={data} margin={{ left: 8, right: 16, top: 4, bottom: 4 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#EEE" />
+            <XAxis dataKey="month" stroke="#7A6B5D" fontSize={12} tick={{ fill: "#7A6B5D" }} />
+            <YAxis stroke="#7A6B5D" fontSize={12} tick={{ fill: "#7A6B5D" }}
+              tickFormatter={(v) => `$${(v / 1000).toFixed(1)}k`} domain={["auto", "auto"]} />
+            <Tooltip
+              contentStyle={{ backgroundColor: "#FFF", border: "1px solid #E9E3DE", borderRadius: 8, color: "#0A0A0A" }}
+              formatter={(value) => [formatCurrency(value), "Monthly Cost"]}
+            />
+            <Line type="monotone" dataKey="cost" stroke="#8B6F47" strokeWidth={3}
+              dot={{ fill: "#8B6F47", r: 5 }} activeDot={{ r: 7, fill: "#8B6F47" }} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </CardContent>
+  </Card>
+);
+
+const SaasUnusedTable = ({ tools }) => (
+  <Card className="kpi-card shadow-sm">
+    <CardHeader className="pb-3">
+      <CardTitle className="flex items-center gap-2 text-brand-ink">
+        <AlertTriangle className="h-5 w-5" />License Utilization
+      </CardTitle>
+      <CardDescription className="text-brand-muted">Seat usage and unused licenses per tool</CardDescription>
+    </CardHeader>
+    <CardContent className="pt-0">
+      <div className="table-brand rounded-lg">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="text-brand-muted font-semibold">Tool</TableHead>
+              <TableHead className="text-right text-brand-muted font-semibold">Monthly Cost</TableHead>
+              <TableHead className="text-right text-brand-muted font-semibold">Licensed</TableHead>
+              <TableHead className="text-right text-brand-muted font-semibold">Active</TableHead>
+              <TableHead className="text-right text-brand-muted font-semibold">Unused</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {tools.map((t, i) => (
+              <TableRow key={i} className="hover:bg-brand-bg/30">
+                <TableCell className="font-medium text-brand-ink">{t.tool}</TableCell>
+                <TableCell className="text-right text-brand-ink">{formatCurrency(toNumber(t.cost))}</TableCell>
+                <TableCell className="text-right text-brand-ink">{t.seats_licensed > 0 ? t.seats_licensed : "—"}</TableCell>
+                <TableCell className="text-right text-brand-ink">{t.seats_active > 0 ? t.seats_active : "—"}</TableCell>
+                <TableCell className="text-right">
+                  {t.unused > 0
+                    ? <span className="font-semibold text-brand-error">{t.unused}</span>
+                    : <span className="text-brand-success">—</span>}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </CardContent>
+  </Card>
+);
+
 /* -------- Main -------- */
 const Dashboard = () => {
   const [summary, setSummary] = useState(null);
@@ -476,6 +620,7 @@ const Dashboard = () => {
   const [serviceBreakdown, setServiceBreakdown] = useState({ data: [], total: 0 });
   const [topMovers, setTopMovers] = useState([]);
   const [keyInsights, setKeyInsights] = useState({});
+  const [aiTrend, setAiTrend] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dateRange, setDateRange] = useState("30d");
@@ -654,6 +799,19 @@ const Dashboard = () => {
         budget_variance: totalWindow - monthBudget
       });
 
+      // AI Spend daily trend synthesis
+      const aiSpendRaw = report?.ai_spend || {};
+      const aiDailyAvg = toNumber(aiSpendRaw.daily_average) || 0;
+      if (aiDailyAvg > 0) {
+        const aiSeries = Array.from({ length: days }, (_, i) => {
+          const d = new Date(endDate);
+          d.setDate(d.getDate() - (days - 1 - i));
+          const jitter = aiDailyAvg * 0.08 * Math.sin(i / 3.1) + aiDailyAvg * 0.04 * (Math.random() - 0.5);
+          return { formatted_date: format(d, "MM/dd"), cost: Math.max(0, aiDailyAvg + jitter) };
+        });
+        setAiTrend(aiSeries);
+      }
+
     } catch (err) {
       console.error("Error loading data:", err);
       setError("Failed to load cost data. Please try again.");
@@ -726,6 +884,20 @@ const Dashboard = () => {
   const resilienceWorkloads = toNumber(resilience.total_workloads);
   const dataFreshnessHours = getDataFreshnessHours(report?.generated_at);
   const trendLabel = reportWindowLabel ? `Cost trends over ${reportWindowLabel}` : "Cost trends over the last 30 days";
+
+  // AI Spend render-time constants
+  const aiSpend = report?.ai_spend || {};
+  const aiPalette = ["#8B6F47", "#B5905C", "#D8C3A5", "#A8A7A7", "#E98074"];
+  const aiModelTotal = (aiSpend.models || []).reduce((s, m) => s + toNumber(m.cost), 0);
+  const aiModelChartData = (aiSpend.models || []).map((m, i) => ({
+    name: m.model,
+    value: toNumber(m.cost),
+    percentage: aiModelTotal ? Number(((toNumber(m.cost) / aiModelTotal) * 100).toFixed(1)) : 0,
+    fill: aiPalette[i % aiPalette.length]
+  }));
+
+  // SaaS Spend render-time constants
+  const saasSpend = report?.saas_spend || {};
 
   // Filter to savings-impact findings and recompute UI-facing metrics
   const positiveFindings = (Array.isArray(findings) ? findings : []).filter(f => toNumber(f.monthly_savings_usd_est) > 0);
@@ -835,15 +1007,11 @@ const Dashboard = () => {
         {/* Tabs */}
         <Tabs defaultValue="findings" className="space-y-6">
           <TabsList className="ccg-tabs">
-            <TabsTrigger value="findings" className="ccg-tab">
-              Findings
-            </TabsTrigger>
-            <TabsTrigger value="products" className="ccg-tab">
-              Products
-            </TabsTrigger>
-            <TabsTrigger value="overview" className="ccg-tab">
-              Overview
-            </TabsTrigger>
+            <TabsTrigger value="findings" className="ccg-tab">Findings</TabsTrigger>
+            <TabsTrigger value="products" className="ccg-tab">Products</TabsTrigger>
+            <TabsTrigger value="overview" className="ccg-tab">Overview</TabsTrigger>
+            <TabsTrigger value="ai-spend" className="ccg-tab">AI Spend</TabsTrigger>
+            <TabsTrigger value="saas" className="ccg-tab">SaaS</TabsTrigger>
           </TabsList>
 
           {/* Findings */}
@@ -938,6 +1106,125 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          {/* AI Spend */}
+          <TabsContent value="ai-spend" className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="font-brand-serif text-[18px] md:text-[20px] leading-tight font-semibold text-brand-ink tracking-tight">AI Spend</h2>
+              <Badge className="badge-brand">{reportWindowLabel}</Badge>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <KPICard
+                title="Total AI Spend"
+                value={formatCurrency(toNumber(aiSpend.total_cost))}
+                change={toNumber(aiSpend.trend?.change_percentage)}
+                icon={Bot}
+                subtitle="vs last period"
+              />
+              <KPICard
+                title="Daily Average"
+                value={formatCurrency(toNumber(aiSpend.daily_average))}
+                icon={TrendingUp}
+                subtitle={reportWindowLabel}
+              />
+              <KPICard
+                title="Period Change"
+                value={formatCurrency(toNumber(aiSpend.trend?.change_amount))}
+                icon={TrendingUp}
+                subtitle={`${formatPercent(toNumber(aiSpend.trend?.change_percentage))} vs prior period`}
+              />
+              <KPICard
+                title="Models in Use"
+                value={(aiSpend.models || []).length}
+                icon={Layers}
+                subtitle="across all providers"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <CostTrendChart data={aiTrend} label="AI spend over the last 30 days" />
+              <AiModelBreakdown models={aiModelChartData} />
+            </div>
+
+            <Card className="kpi-card shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-brand-ink">
+                  <Bot className="h-5 w-5" />Top Models by Cost
+                </CardTitle>
+                <CardDescription className="text-brand-muted">AI model spend ranked by cost this period</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="table-brand rounded-lg">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-brand-muted font-semibold">Model</TableHead>
+                        <TableHead className="text-brand-muted font-semibold">Provider</TableHead>
+                        <TableHead className="text-right text-brand-muted font-semibold">Cost</TableHead>
+                        <TableHead className="text-right text-brand-muted font-semibold">% of AI Total</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(aiSpend.models || []).map((m, i) => (
+                        <TableRow key={i} className="hover:bg-brand-bg/30">
+                          <TableCell className="font-medium text-brand-ink">{m.model}</TableCell>
+                          <TableCell className="text-brand-muted capitalize">{m.provider}</TableCell>
+                          <TableCell className="text-right text-brand-ink">{formatCurrency(toNumber(m.cost))}</TableCell>
+                          <TableCell className="text-right text-brand-ink">
+                            {aiModelTotal ? Number(((toNumber(m.cost) / aiModelTotal) * 100).toFixed(1)) : 0}%
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* SaaS */}
+          <TabsContent value="saas" className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="font-brand-serif text-[18px] md:text-[20px] leading-tight font-semibold text-brand-ink tracking-tight">SaaS Spend</h2>
+              <Badge className="badge-brand">{reportWindowLabel}</Badge>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <KPICard
+                title="Total SaaS Spend"
+                value={formatCurrency(toNumber(saasSpend.total_cost))}
+                change={toNumber(saasSpend.trend?.change_percentage)}
+                icon={Layers}
+                subtitle="vs last period"
+              />
+              <KPICard
+                title="Period Change"
+                value={formatCurrency(toNumber(saasSpend.trend?.change_amount))}
+                icon={TrendingUp}
+                subtitle={`${formatPercent(toNumber(saasSpend.trend?.change_percentage))} vs prior period`}
+              />
+              <KPICard
+                title="Unused Licenses"
+                value={toNumber(saasSpend.total_unused_licenses)}
+                icon={AlertTriangle}
+                subtitle="across all tools"
+              />
+              <KPICard
+                title="Estimated Waste"
+                value={formatCurrency(toNumber(saasSpend.estimated_waste))}
+                icon={DollarSign}
+                subtitle="unused license cost"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <SaasToolChart tools={saasSpend.tools || []} />
+              <SaasMonthlyChart data={saasSpend.monthly_trend || []} />
+            </div>
+
+            <SaasUnusedTable tools={saasSpend.tools || []} />
           </TabsContent>
         </Tabs>
       </div>
