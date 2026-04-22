@@ -116,6 +116,18 @@
       { "model": "amazon.nova-pro",     "provider": "bedrock",   "cost": 15.80  }
     ]
   },
+  "combined_spend": {
+    "total_cost": 20813.15,
+    "previous_total_cost": 19338.30,
+    "change_amount": 1474.85,
+    "change_percentage": 7.63,
+    "by_scope": {
+      "cloud": 18340.75,
+      "ai": 892.40,
+      "saas": 1580.00
+    },
+    "projected_next_month": 22420.42
+  },
   "saas_spend": {
     "total_cost": 1580.00,
     "trend": {
