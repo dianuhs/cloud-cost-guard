@@ -24,6 +24,18 @@ const CloseIcon = () => (
   </svg>
 );
 
+const renderMessage = (text) => {
+  return text.split("\n").flatMap((line, li, lines) => {
+    const parts = line.split(/(\*\*[^*]+\*\*)/g).map((part, i) => {
+      if (part.startsWith("**") && part.endsWith("**")) {
+        return <strong key={i}>{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+    return li < lines.length - 1 ? [...parts, <br key={`br-${li}`} />] : parts;
+  });
+};
+
 const getSafeReport = (report) => {
   const safeReport = { ...report };
   if (safeReport.cost_baseline) {
@@ -173,7 +185,7 @@ const AskClaude = () => {
           {messages.map((msg, i) => (
             <div key={i} className={`ask-claude-row${msg.role === "user" ? " ask-claude-row--user" : ""}`}>
               <div className={`ask-claude-bubble ask-claude-bubble--${msg.role}`}>
-                {msg.content}
+                {msg.role === "assistant" ? renderMessage(msg.content) : msg.content}
               </div>
             </div>
           ))}
