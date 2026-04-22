@@ -72,16 +72,19 @@ const AskClaude = () => {
     setError(null);
 
     try {
-      const res = await fetch("/api/ask-claude", {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
-          "content-type": "application/json"
+          "content-type": "application/json",
+          "x-api-key": process.env.REACT_APP_ANTHROPIC_KEY,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-request-allowlist": "true"
         },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
           max_tokens: 500,
           system: systemPrompt,
-          messages: nextMessages
+          messages: nextMessages.map(m => ({ role: m.role, content: m.content }))
         })
       });
 
