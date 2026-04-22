@@ -268,6 +268,17 @@ h1{ font-weight:600; } h2{ font-weight:600; }
 }
 .ask-claude-sparkle { font-style: normal; line-height: 1; }
 
+/* Shown when REACT_APP_ANTHROPIC_KEY is not configured */
+.ask-claude-unavailable {
+  position: fixed;
+  bottom: 32px;
+  right: 28px;
+  z-index: 200;
+  margin: 0;
+  font-size: 11px;
+  color: #AFA49A;
+}
+
 /* Transparent backdrop */
 .ask-claude-backdrop {
   position: fixed;
@@ -323,56 +334,6 @@ h1{ font-weight:600; } h2{ font-weight:600; }
   transition: background .12s, color .12s;
 }
 .ask-claude-icon-btn:hover { background: #F2EFEA; color: var(--brand-ink); }
-
-/* Settings drawer */
-.ask-claude-settings {
-  padding: 13px 14px;
-  border-bottom: 1px solid var(--brand-line);
-  background: #F9F4EF;
-  flex-shrink: 0;
-}
-.ask-claude-settings-label {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--brand-muted);
-  margin-bottom: 8px;
-}
-.ask-claude-key-input {
-  display: block;
-  width: 100%;
-  padding: 7px 10px;
-  border: 1px solid var(--brand-line);
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  font-family: inherit;
-  background: #fff;
-  color: var(--brand-ink);
-  outline: none;
-  margin-bottom: 8px;
-  box-sizing: border-box;
-}
-.ask-claude-key-input:focus { border-color: var(--brand-accent); }
-.ask-claude-save-btn {
-  padding: 6px 14px;
-  background: var(--brand-accent);
-  color: #fff;
-  border: none;
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background .12s;
-}
-.ask-claude-save-btn:hover { background: #7a6040; }
-.ask-claude-settings-note {
-  font-size: 11px;
-  color: var(--brand-muted);
-  margin-top: 8px;
-  line-height: 1.4;
-}
 
 /* Messages scrollable area */
 .ask-claude-messages {
