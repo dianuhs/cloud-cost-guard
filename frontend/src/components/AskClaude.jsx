@@ -95,7 +95,10 @@ const AskClaude = () => {
       }
 
       const data = await res.json();
-      const reply = data.content?.[0]?.text || "(No response)";
+      const textBlock = Array.isArray(data?.content)
+        ? data.content.find((b) => b.type === "text")
+        : null;
+      const reply = textBlock?.text || "(No response)";
       setMessages([...nextMessages, { role: "assistant", content: reply }]);
     } catch (err) {
       setError(err.message || "Something went wrong. Please try again.");
