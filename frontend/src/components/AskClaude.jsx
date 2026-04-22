@@ -88,13 +88,13 @@ const AskClaude = () => {
         })
       });
 
+      const data = await res.json();
+      console.log(data);
+
       if (!res.ok) {
-        const errBody = await res.json().catch(() => ({}));
-        const msg = errBody?.error?.message || `API error (${res.status})`;
-        throw new Error(msg);
+        throw new Error(data.error?.message || `API error ${res.status}`);
       }
 
-      const data = await res.json();
       const textBlock = Array.isArray(data?.content)
         ? data.content.find((b) => b.type === "text")
         : null;
