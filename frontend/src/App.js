@@ -11,6 +11,9 @@ import logo from "./assets/cloud-and-capital-icon.png";
 // AI/automation demo card
 import TriageCard from "./components/TriageCard";
 
+// Ask Claude floating assistant
+import AskClaude from "./components/AskClaude";
+
 // Recharts
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -1347,6 +1350,9 @@ const Dashboard = () => {
           <div>No finding selected.</div>
         )}
       </Modal>
+
+      {/* Ask Claude floating assistant */}
+      <AskClaude />
     </div>
   );
 };
