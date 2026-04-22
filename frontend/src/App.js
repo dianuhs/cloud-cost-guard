@@ -764,6 +764,11 @@ const Dashboard = () => {
   const grandPrev = cloudPrev + aiPrev + saasPrev;
   const grandDeltaAmt = grandTotal - grandPrev;
   const grandDeltaPct = grandPrev > 0 ? (grandDeltaAmt / grandPrev) * 100 : 0;
+  const scopeDonutData = [
+    { name: "Cloud Infrastructure", value: cloudTotal, fill: "#8B6F47" },
+    { name: "AI / LLM",             value: aiTotal,    fill: "#C4A882" },
+    { name: "SaaS Tools",           value: saasTotal,  fill: "#D8C3A5" }
+  ];
   const topAnomaly = Array.isArray(anomalies.recent) && anomalies.recent.length > 0 ? anomalies.recent[0] : null;
   const projCloudNextMonth = (keyInsights?.projected_month_end || cloudTotal);
   const projAiNextMonth = aiTotal * (1 + toNumber(aiSpend.trend?.change_percentage) / 100);
@@ -828,7 +833,7 @@ const Dashboard = () => {
 
         {/* Data Source banner (compact caption) */}
         <div className="mb-4 text-xs text-brand-muted flex items-center gap-3">
-          <span><span className="font-medium">Data Source:</span> AWS Cost &amp; Usage Reports • CloudWatch Metrics • Resource Inventory APIs</span>
+          <span><span className="font-medium">Data Source:</span> AWS • AI Providers • SaaS Billing • CloudWatch Metrics</span>
           <span className="hidden sm:inline">•</span>
           <span>Last Updated: {formatTimestamp(report?.generated_at)}</span>
         </div>
@@ -893,8 +898,8 @@ const Dashboard = () => {
             />
           </div>
 
-          {/* Unified trend + top anomaly & forecast */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Unified trend + scope donut + top anomaly & forecast */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
             {/* Unified 3-scope trend chart */}
             <Card className="kpi-card shadow-sm">
@@ -927,6 +932,50 @@ const Dashboard = () => {
                   <div className="flex items-center gap-1.5"><div className="w-4 h-0.5 rounded bg-[#8B6F47]" /><span>Cloud</span></div>
                   <div className="flex items-center gap-1.5"><div className="w-4 h-0.5 rounded bg-[#B5905C]" /><span>AI</span></div>
                   <div className="flex items-center gap-1.5"><div className="w-4 h-0.5 rounded bg-[#A8A7A7]" /><span>SaaS</span></div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Tech Spend by Scope donut */}
+            <Card className="kpi-card shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-brand-ink">
+                  <PieChartIcon className="h-5 w-5" />Tech Spend by Scope
+                </CardTitle>
+                <CardDescription className="text-brand-muted">Cloud vs AI vs SaaS share of total</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div style={{ width: "100%", height: 200 }}>
+                  <ResponsiveContainer>
+                    <PieChart>
+                      <Pie data={scopeDonutData} cx="50%" cy="50%" innerRadius={50} outerRadius={88} paddingAngle={3} dataKey="value">
+                        {scopeDonutData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{ backgroundColor: "#FFF", border: "1px solid #E9E3DE", borderRadius: 8, color: "#0A0A0A" }}
+                        formatter={(val, _n, props) => [
+                          formatCurrency(val),
+                          `${props.payload.name} (${grandTotal ? ((val / grandTotal) * 100).toFixed(1) : 0}%)`
+                        ]}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="space-y-2.5 mt-3">
+                  {scopeDonutData.map((s, i) => (
+                    <div key={i} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.fill }} />
+                        <span className="text-brand-muted text-xs">{s.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-brand-ink text-xs">{formatCurrency(s.value)}</span>
+                        <span className="text-xs text-brand-muted w-9 text-right">
+                          {grandTotal ? ((s.value / grandTotal) * 100).toFixed(1) : 0}%
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
