@@ -181,8 +181,8 @@ const KPICard = ({ title, value, change, icon: Icon, subtitle, dataFreshness }) 
       <div className="text-2xl font-bold text-brand-ink">{value}</div>
       {Number.isFinite(change) ? (
         <p className="text-xs text-brand-muted flex items-center gap-1 mt-1">
-          {change >= 0 ? <TrendingUp className="h-3 w-3 text-brand-success" /> : <TrendingDown className="h-3 w-3 text-brand-error" />}
-          <span className={change >= 0 ? "text-brand-success" : "text-brand-error"}>{formatPercent(change)}</span>
+          {change >= 0 ? <TrendingUp className="h-3 w-3 text-brand-error" /> : <TrendingDown className="h-3 w-3 text-brand-success" />}
+          <span className={change >= 0 ? "text-brand-error" : "text-brand-success"}>{formatPercent(change)}</span>
           {subtitle}
         </p>
       ) : (
