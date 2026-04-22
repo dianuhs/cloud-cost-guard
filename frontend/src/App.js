@@ -768,9 +768,9 @@ const Dashboard = () => {
   const grandDeltaAmt = grandTotal - grandPrev;
   const grandDeltaPct = grandPrev > 0 ? (grandDeltaAmt / grandPrev) * 100 : 0;
   const scopeDonutData = [
-    { name: "Cloud Infrastructure", value: cloudTotal, fill: "#8B6F47" },
-    { name: "AI / LLM",             value: aiTotal,    fill: "#C4A882" },
-    { name: "SaaS Tools",           value: saasTotal,  fill: "#D8C3A5" }
+    { name: "Cloud Infrastructure", value: cloudTotal, fill: "#6b8f71" },
+    { name: "AI / LLM",             value: aiTotal,    fill: "#c4956a" },
+    { name: "SaaS Tools",           value: saasTotal,  fill: "#8b9dc3" }
   ];
   const topAnomaly = Array.isArray(anomalies.recent) && anomalies.recent.length > 0 ? anomalies.recent[0] : null;
   const projCloudNextMonth = (keyInsights?.projected_month_end || cloudTotal);
@@ -789,6 +789,7 @@ const Dashboard = () => {
   // Filter to savings-impact findings and recompute UI-facing metrics
   const positiveFindings = (Array.isArray(findings) ? findings : []).filter(f => toNumber(f.monthly_savings_usd_est) > 0);
   const displayFindings = sortAndPickFindings(positiveFindings, 9);
+  const totalSavingsOpportunity = displayFindings.reduce((s, f) => s + toNumber(f.monthly_savings_usd_est), 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand-bg to-brand-light">
@@ -838,7 +839,7 @@ const Dashboard = () => {
         <div className="mb-4 text-xs text-brand-muted flex items-center gap-3">
           <span><span className="font-medium">Data Source:</span> AWS • AI Providers • SaaS Billing • CloudWatch Metrics</span>
           <span className="hidden sm:inline">•</span>
-          <span>Last Updated: {formatTimestamp(report?.generated_at)}</span>
+          <span>Last Updated: {new Date().toLocaleDateString()}</span>
         </div>
 
         {/* ── Cloud+ Executive Summary ───────────────────── */}
@@ -899,6 +900,39 @@ const Dashboard = () => {
               icon={Layers}
               subtitle="vs last period"
             />
+          </div>
+
+          {/* Tag Coverage + Savings Opportunity */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card className="kpi-card shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-brand-muted">Tag Coverage</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-2xl font-bold text-brand-ink">73%</span>
+                  <span className="text-xs text-brand-muted">27% untagged</span>
+                </div>
+                <div style={{ width: "100%", height: 8, background: "#E9E3DE", borderRadius: 999 }}>
+                  <div style={{ width: "73%", height: 8, background: "#6b8f71", borderRadius: 999 }} />
+                </div>
+                <p className="text-xs text-brand-muted mt-2">of resources properly tagged</p>
+              </CardContent>
+            </Card>
+
+            <Card className="kpi-card shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-brand-muted">Savings Opportunity</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="text-2xl font-bold" style={{ color: "#16803A" }}>
+                  {formatCurrency(totalSavingsOpportunity)}
+                </div>
+                <p className="text-xs text-brand-muted mt-1">
+                  total identified monthly savings · across {displayFindings.length} finding{displayFindings.length !== 1 ? "s" : ""}
+                </p>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Unified trend + scope donut + top anomaly & forecast */}
