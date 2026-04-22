@@ -7,7 +7,10 @@ const SAMPLE_QUESTIONS = [
   "What's bleeding money right now?",
   "Where should I cut first?",
   "Is my AI spend worth it?",
-  "What's my biggest risk this month?"
+  "What's my biggest risk this month?",
+  "Any SaaS I should cancel?",
+  "How's my tagging coverage?",
+  "What will I spend next month?"
 ];
 
 const SendIcon = () => (
@@ -155,13 +158,25 @@ const AskClaude = () => {
               <div style={{ fontSize: 10, color: "#9B8E83", lineHeight: 1.2 }}>FinOps AI · Cloud &amp; Capital</div>
             </div>
           </div>
-          <button
-            className="ask-claude-icon-btn"
-            onClick={() => setOpen(false)}
-            title="Close"
-          >
-            <CloseIcon />
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            {messages.length > 0 && (
+              <button
+                className="ask-claude-icon-btn"
+                onClick={() => setMessages([])}
+                title="New chat"
+                style={{ fontSize: 10, padding: "3px 7px", borderRadius: 4, color: "#9B8E83" }}
+              >
+                New chat
+              </button>
+            )}
+            <button
+              className="ask-claude-icon-btn"
+              onClick={() => setOpen(false)}
+              title="Close"
+            >
+              <CloseIcon />
+            </button>
+          </div>
         </div>
 
         {/* Messages area */}
@@ -173,11 +188,13 @@ const AskClaude = () => {
               <p style={{ fontSize: 12, color: "#7A6B5D", textAlign: "center", marginBottom: 10 }}>
                 Ask about your cost data
               </p>
-              {SAMPLE_QUESTIONS.map((q, i) => (
-                <button key={i} className="ask-claude-chip" onClick={() => sendMessage(q)}>
-                  {q}
-                </button>
-              ))}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                {SAMPLE_QUESTIONS.map((q, i) => (
+                  <button key={i} className="ask-claude-chip" onClick={() => sendMessage(q)}>
+                    {q}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
