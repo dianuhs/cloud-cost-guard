@@ -4,10 +4,10 @@ import { getCloudCapitalReport } from "../lib/report";
 const API_KEY = process.env.REACT_APP_ANTHROPIC_KEY || "";
 
 const SAMPLE_QUESTIONS = [
-  "Why is my cloud spend up?",
-  "What should I optimize first?",
-  "How does my AI spend compare to cloud?",
-  "What's my biggest cost risk?"
+  "What's bleeding money right now?",
+  "Where should I cut first?",
+  "Is my AI spend worth it?",
+  "What's my biggest risk this month?"
 ];
 
 const SendIcon = () => (
@@ -24,20 +24,14 @@ const CloseIcon = () => (
   </svg>
 );
 
-const buildSystemPrompt = (report) => {
+const getSafeReport = (report) => {
   const safeReport = { ...report };
   if (safeReport.cost_baseline) {
     const cb = { ...safeReport.cost_baseline };
     delete cb.raw;
     safeReport.cost_baseline = cb;
   }
-  return (
-    "You are a FinOps analyst assistant for Cloud & Capital. " +
-    "Here is the current cost dashboard data:\n\n" +
-    JSON.stringify(safeReport, null, 2) +
-    "\n\nAnswer questions about this data concisely and helpfully. " +
-    "Focus on actionable insights. Keep responses under 150 words unless the question requires more detail."
-  );
+  return safeReport;
 };
 
 const AskClaude = () => {
@@ -49,8 +43,7 @@ const AskClaude = () => {
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
-  const report = getCloudCapitalReport();
-  const systemPrompt = buildSystemPrompt(report);
+  const reportData = getSafeReport(getCloudCapitalReport());
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -78,9 +71,7 @@ const AskClaude = () => {
           "content-type": "application/json"
         },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 500,
-          system: systemPrompt,
+          reportData,
           messages: nextMessages.map(m => ({ role: m.role, content: m.content }))
         })
       });
@@ -114,7 +105,7 @@ const AskClaude = () => {
   // No key configured — show small muted notice instead of the chat interface
   if (!API_KEY) {
     return (
-      <p className="ask-claude-unavailable">AI assistant unavailable</p>
+      <p className="ask-claude-unavailable">Lumen unavailable</p>
     );
   }
 
@@ -122,9 +113,9 @@ const AskClaude = () => {
     <>
       {/* Floating trigger button */}
       {!open && (
-        <button className="ask-claude-btn" onClick={() => setOpen(true)} aria-label="Open Ask Claude">
+        <button className="ask-claude-btn" onClick={() => setOpen(true)} aria-label="Open Lumen">
           <span className="ask-claude-sparkle" aria-hidden="true">✦</span>
-          Ask Claude
+          Lumen
         </button>
       )}
 
@@ -141,13 +132,16 @@ const AskClaude = () => {
       <div
         className={`ask-claude-panel${open ? " ask-claude-panel--open" : ""}`}
         role="dialog"
-        aria-label="Ask Claude assistant"
+        aria-label="Lumen assistant"
       >
         {/* Header */}
         <div className="ask-claude-header">
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span className="ask-claude-sparkle" style={{ color: "#8B6F47", fontSize: 16 }}>✦</span>
-            <span style={{ fontWeight: 600, fontSize: 14, color: "#0A0A0A" }}>Ask Claude</span>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 14, color: "#0A0A0A", lineHeight: 1.2 }}>Lumen</div>
+              <div style={{ fontSize: 10, color: "#9B8E83", lineHeight: 1.2 }}>FinOps AI · Cloud &amp; Capital</div>
+            </div>
           </div>
           <button
             className="ask-claude-icon-btn"
