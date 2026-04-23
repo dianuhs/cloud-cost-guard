@@ -800,7 +800,7 @@ const Dashboard = () => {
             <div className="flex items-center gap-3">
               <img src={logo} alt="Cloud & Capital" className="brand-logo" />
               <div className="leading-tight">
-                <h1 className="brand-title">Cloud Cost Guard</h1>
+                <h1 className="brand-title">Cloud+ Cost Guard</h1>
                 <p className="text-[15px] text-brand-muted">Multi-cloud cost optimization</p>
               </div>
             </div>
