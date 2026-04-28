@@ -504,6 +504,9 @@ const Dashboard = () => {
   const anomalies = report?.anomalies || {};
   const resilience = report?.resilience || {};
   const reportWindowLabel = report?.window?.label || "Last 30 days";
+  const tagging = report?.tagging || {};
+  const coveragePct = tagging.coverage_pct ?? 73;
+  const untaggedPct = tagging.untagged_pct ?? 27;
   const hasCostData = costBaseline?.cost_status?.has_data !== false;
 
   // Modal
@@ -801,7 +804,7 @@ const Dashboard = () => {
               <img src={logo} alt="Cloud & Capital" className="brand-logo" />
               <div className="leading-tight">
                 <h1 className="brand-title">Cloud+ Cost Guard</h1>
-                <p className="text-[15px] text-brand-muted">Multi-cloud cost optimization</p>
+                <p className="text-[15px] text-brand-muted">Multi-cloud cost optimization <span style={{ opacity: 0.5, fontSize: "11px", letterSpacing: "0.04em" }}>· Demo data · sample workload</span></p>
               </div>
             </div>
 
@@ -910,11 +913,11 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent className="pt-0">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-2xl font-bold text-brand-ink">73%</span>
-                  <span className="text-xs text-brand-muted">27% untagged</span>
+                  <span className="text-2xl font-bold text-brand-ink">{coveragePct}%</span>
+                  <span className="text-xs text-brand-muted">{untaggedPct}% untagged</span>
                 </div>
                 <div style={{ width: "100%", height: 8, background: "#E9E3DE", borderRadius: 999 }}>
-                  <div style={{ width: "73%", height: 8, background: "#6b8f71", borderRadius: 999 }} />
+                  <div style={{ width: `${coveragePct}%`, height: 8, background: "#6b8f71", borderRadius: 999 }} />
                 </div>
                 <p className="text-xs text-brand-muted mt-2">of resources properly tagged</p>
               </CardContent>
